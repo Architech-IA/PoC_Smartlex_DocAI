@@ -21,30 +21,42 @@ model Proyecto {
 }
 
 model Documento {
-  id             String                      @id @default(cuid())
-  proyectoId     String
-  proyecto       Proyecto                    @relation(fields: [proyectoId], references: [id])
-  nombre         String
-  tipo           String                      // CONTRATO | FORMATO | ACTA | DOCUMENTACION_LEGAL | OTRO
-  origen         String                      // SUBIDO | GENERADO
-  archivoBase64  String?
-  mimeType       String?
-  estado         String                      @default("PROCESANDO") // PROCESANDO | LISTO | ERROR
-  resumen        String?
-  datosClave     String?                     // JSON con fechas relevantes, partes, etc.
-  textoExtraido  String?
-  embedding      Unsupported("vector(1024)")?
-  createdAt      DateTime                    @default(now())
-  updatedAt      DateTime                    @updatedAt
+  id               String    @id @default(cuid())
+  proyectoId       String?
+  proyecto         Proyecto? @relation(fields: [proyectoId], references: [id])
+  nombre           String
+  tipo             String    // CONTRATO | FORMATO | ACTA | DOCUMENTACION_LEGAL | OTRO
+  area             String?   // Laboral, Civil, Mercantil, Tributario, Societario, etc.
+  origen           String    // SUBIDO | GENERADO
+  origenCarpeta    String?
+  archivoBase64    String?
+  mimeType         String?
+  tamanoBytes      Int?
+  hashSha256       String    @unique
+  estado           String    @default("PROCESANDO") // PROCESANDO | LISTO | ERROR | ARCHIVADO
+  resumen          String?
+  datosClave       String?
+  textoExtraido    String?
+  embedding        Unsupported("vector(1024)")?
+  documentoPadreId String?
+  documentoPadre   Documento?  @relation("VersionesDocumento", fields: [documentoPadreId], references: [id])
+  versiones        Documento[] @relation("VersionesDocumento")
+  esVersionActual  Boolean     @default(true)
+  versionNumero    Int         @default(1)
+  creadoPor        String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
-  eventos        EventoAuditoria[]
+  eventos          EventoAuditoria[]
 }
 
 model EventoAuditoria {
-  id          String    @id @default(cuid())
-  documentoId String
-  documento   Documento @relation(fields: [documentoId], references: [id])
-  tipo        String    // SUBIDO | CLASIFICADO | EMBEDDING | GENERADO | ERROR
+  id          String     @id @default(cuid())
+  entidad     String     // DOCUMENTO | PROYECTO
+  entidadId   String
+  documento   Documento? @relation(fields: [entidadId], references: [id])
+  accion      String     // CREAR | VER | DESCARGAR | MODIFICAR | ARCHIVAR | RESTAURAR_VERSION | ERROR_PROCESAMIENTO
+  actor       String?
   detalle     String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime   @default(now())
 }
