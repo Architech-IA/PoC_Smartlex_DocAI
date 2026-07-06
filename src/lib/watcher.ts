@@ -1,12 +1,3 @@
-/**
- * Watcher de carpeta de ingesta.
- * Detecta archivos nuevos con chokidar, los procesa con runSkill('clasificar-documento')
- * y los mueve a Procesados/ al terminar (modelo Bronze → Silver).
- *
- * Para activar: importar e invocar startWatcher() desde un entry point (ej. un script separado
- * o desde src/app/api/watcher/start/route.ts). No corre dentro del proceso de Next.js por defecto.
- */
-
 import chokidar from 'chokidar';
 import { readFile, mkdir, rename } from 'node:fs/promises';
 import { join, dirname, basename } from 'node:path';
@@ -19,14 +10,10 @@ const INGESTA_BASE_PATH = process.env.INGESTA_BASE_PATH ?? '/tmp/ingesta';
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const DEBOUNCE_MS = 2_000;
 
-// Archivos de transcript de Tactiq (se procesan como actas)
 const EXTENSIONES_TRANSCRIPT = /\.(txt|md)$/i;
-// Todos los demás documentos aceptados
-const EXTENSIONES_DOCUMENTO = /\.(pdf|doc|docx)$/i;
 const EXTENSIONES_ACEPTADAS = /\.(txt|md|pdf|doc|docx)$/i;
 
 function esTranscript(filePath: string): boolean {
-  // Detecta si el archivo viene de la subcarpeta de Tactiq o tiene extensión de transcript
   const enCarpetaTactiq = filePath.toLowerCase().includes('tactiq') || filePath.toLowerCase().includes('transcripts');
   return enCarpetaTactiq && EXTENSIONES_TRANSCRIPT.test(filePath);
 }
@@ -45,10 +32,7 @@ export function startWatcher(): void {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   const watcher = chokidar.watch(INGESTA_BASE_PATH, {
-    ignored: [
-      /(^|[/\\])\../, // archivos ocultos
-      /Procesados[/\\]/,  // no re-procesar los ya movidos
-    ],
+    ignored: [/(^|[/\\])\../, /Procesados[/\\]/],
     persistent: true,
     ignoreInitial: false,
     awaitWriteFinish: { stabilityThreshold: 1_500, pollInterval: 300 },
@@ -56,22 +40,18 @@ export function startWatcher(): void {
 
   watcher.on('add', (filePath) => {
     if (!EXTENSIONES_ACEPTADAS.test(filePath)) return;
-
-    // Debounce: si el archivo cambia varias veces seguidas, esperar a que se estabilice
     const prev = timers.get(filePath);
     if (prev) clearTimeout(prev);
-
     const timer = setTimeout(() => {
       timers.delete(filePath);
       procesarArchivo(filePath).catch((err) =>
-        console.error(`[watcher] Error inesperado en ${filePath}:`, err),
+        console.error(`[watcher] Error en ${filePath}:`, err),
       );
     }, DEBOUNCE_MS);
-
     timers.set(filePath, timer);
   });
 
-  watcher.on('error', (err) => console.error('[watcher] Error de chokidar:', err));
+  watcher.on('error', (err) => console.error('[watcher] Error chokidar:', err));
 }
 
 async function procesarArchivo(filePath: string): Promise<void> {
@@ -81,14 +61,13 @@ async function procesarArchivo(filePath: string): Promise<void> {
   try {
     buffer = await readFile(filePath);
   } catch {
-    console.error(`[watcher] No se pudo leer ${filePath} — puede haber sido movido`);
+    console.error(`[watcher] No se pudo leer ${filePath}`);
     return;
   }
 
-  // Validar tamaño
   const tamanoBytes = buffer.length;
   if (tamanoBytes > MAX_MB * 1_048_576) {
-    console.warn(`[watcher] ${filePath} supera ${MAX_MB}MB — ignorado`);
+    console.warn(`[watcher] ${filePath} supera ${MAX_MB}MB`);
     return;
   }
 
@@ -97,14 +76,12 @@ async function procesarArchivo(filePath: string): Promise<void> {
   const origenCarpeta = dirname(filePath);
   const archivoBase64 = buffer.toString('base64');
 
-  // Detectar duplicado exacto
   const existente = await prisma.documento.findUnique({ where: { hashSha256 } });
   if (existente) {
-    console.warn(`[watcher] Duplicado exacto ignorado: ${nombre} (existe id=${existente.id})`);
+    console.warn(`[watcher] Duplicado ignorado: ${nombre}`);
     return;
   }
 
-  // Crear fila en PROCESANDO
   let doc = await prisma.documento.create({
     data: {
       nombre,
@@ -120,26 +97,21 @@ async function procesarArchivo(filePath: string): Promise<void> {
     },
   });
 
-  await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor: 'watcher', detalle: `Detectado por watcher en ${origenCarpeta}` });
+  await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor: 'watcher', detalle: `Detectado en ${origenCarpeta}` });
 
-  // Encolar Skill de clasificación
-  // Ramificar según tipo de archivo
   if (esTranscript(filePath)) {
     await procesarTranscript(filePath, buffer, doc);
     return;
   }
 
   try {
-    const texto = buffer.toString('utf8').slice(0, 8_000); // primeros 8k chars al modelo
+    const texto = buffer.toString('utf8').slice(0, 8_000);
     const input = JSON.stringify({ nombre, contenido: texto });
     const salida = await runSkill('clasificar-documento', input);
 
     let clasificacion: ClasificacionResult = {};
-    try {
-      clasificacion = JSON.parse(salida) as ClasificacionResult;
-    } catch {
-      clasificacion = { resumen: salida };
-    }
+    try { clasificacion = JSON.parse(salida) as ClasificacionResult; }
+    catch { clasificacion = { resumen: salida }; }
 
     doc = await prisma.documento.update({
       where: { id: doc.id },
@@ -153,26 +125,21 @@ async function procesarArchivo(filePath: string): Promise<void> {
       },
     });
 
-    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: 'Clasificado correctamente' });
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: 'Clasificado' });
 
-    // Mover archivo a Procesados/
     const destDir = join(origenCarpeta, 'Procesados');
     await mkdir(destDir, { recursive: true });
     await rename(filePath, join(destDir, nombre));
-    console.log(`[watcher] Procesado y movido a Procesados/: ${nombre}`);
+    console.log(`[watcher] Procesado: ${nombre}`);
   } catch (err) {
     const detalle = err instanceof Error ? err.message : String(err);
     await prisma.documento.update({ where: { id: doc.id }, data: { estado: 'ERROR' } });
     await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'ERROR_PROCESAMIENTO', actor: 'watcher', detalle });
-    console.error(`[watcher] Fallo clasificando ${nombre}:`, err);
+    console.error(`[watcher] Fallo: ${nombre}:`, err);
   }
 }
 
-async function procesarTranscript(
-  filePath: string,
-  buffer: Buffer,
-  doc: { id: string },
-): Promise<void> {
+async function procesarTranscript(filePath: string, buffer: Buffer, doc: { id: string }): Promise<void> {
   const nombre = basename(filePath);
   const origenCarpeta = dirname(filePath);
   const texto = buffer.toString('utf8');
@@ -180,24 +147,30 @@ async function procesarTranscript(
   try {
     const { generarDocx } = await import('@/lib/docx');
     const { getEmbedding } = await import('@/lib/embeddings');
-    const { createHash } = await import('node:crypto');
 
     const salidaRaw = await runSkill('generar-acta', texto.slice(0, 12_000));
-    let acta;
-    try { acta = JSON.parse(salidaRaw); } catch { acta = { titulo: nombre, fecha: new Date().toISOString().slice(0, 10), resumen: salidaRaw, participantes: [], puntosTratados: [], acuerdos: [], proximosPasos: [] }; }
+    let acta: Record<string, unknown>;
+    try {
+      const jsonMatch = salidaRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : salidaRaw.trim();
+      acta = JSON.parse(jsonStr) as Record<string, unknown>;
+    } catch {
+      acta = { titulo: nombre, fecha: new Date().toISOString().slice(0, 10), resumen: salidaRaw, participantes: [], puntosTratados: [], acuerdos: [], proximosPasos: [] };
+    }
 
-    const docxBuffer = await generarDocx(acta);
+    const docxBuffer = await generarDocx(acta as never);
     const archivoBase64 = docxBuffer.toString('base64');
     const hashDocx = createHash('sha256').update(docxBuffer).digest('hex');
 
-    const textoEmbedding = [acta.resumen ?? '', ...(acta.puntosTratados ?? [])].join(' ');
+    const textoEmbedding = [acta.resumen ?? '', ...((acta.puntosTratados as string[]) ?? [])].join(' ');
     let embedding: number[] = [];
     try { embedding = await getEmbedding(textoEmbedding); } catch { /* silencioso */ }
 
+    // Actualizar documento sin campo embedding
     await prisma.documento.update({
       where: { id: doc.id },
       data: {
-        nombre: `${acta.titulo ?? 'Acta'} — ${acta.fecha ?? new Date().toISOString().slice(0, 10)}.docx`,
+        nombre: `${String(acta.titulo ?? 'Acta')} — ${String(acta.fecha ?? new Date().toISOString().slice(0, 10))}.docx`,
         tipo: 'ACTA',
         origen: 'GENERADO',
         archivoBase64,
@@ -205,24 +178,33 @@ async function procesarTranscript(
         tamanoBytes: docxBuffer.length,
         hashSha256: hashDocx,
         estado: 'LISTO',
-        resumen: acta.resumen ?? null,
+        resumen: acta.resumen ? String(acta.resumen) : null,
         datosClave: JSON.stringify({ participantes: acta.participantes, fecha: acta.fecha }),
         textoExtraido: texto.slice(0, 8_000),
-        ...(embedding.length > 0 ? { embedding: `[${embedding.join(',')}]` } : {}),
       },
     });
 
-    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: `Acta generada desde transcript: ${nombre}` });
+    // Actualizar embedding con SQL raw (vector(1024) no soportado en Prisma Client)
+    if (embedding.length > 0) {
+      const vectorStr = `[${embedding.join(',')}]`;
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Documento" SET embedding = $1::vector WHERE id = $2`,
+        vectorStr,
+        doc.id,
+      );
+    }
+
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: `Acta generada: ${nombre}` });
 
     const destDir = join(origenCarpeta, 'Procesados');
     await mkdir(destDir, { recursive: true });
     await rename(filePath, join(destDir, nombre));
-    console.log(`[watcher] Transcript procesado como acta: ${nombre}`);
+    console.log(`[watcher] Transcript procesado: ${nombre}`);
   } catch (err) {
     const detalle = err instanceof Error ? err.message : String(err);
     await prisma.documento.update({ where: { id: doc.id }, data: { estado: 'ERROR' } });
     await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'ERROR_PROCESAMIENTO', actor: 'watcher', detalle });
-    console.error(`[watcher] Fallo generando acta desde ${nombre}:`, err);
+    console.error(`[watcher] Fallo transcript ${nombre}:`, err);
   }
 }
 

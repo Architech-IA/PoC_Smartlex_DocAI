@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
 
     let acta: ActaData;
     try {
-      // El modelo puede envolver el JSON en bloques de código markdown — extraerlo si es el caso
       const jsonMatch = salidaRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : salidaRaw.trim();
       acta = JSON.parse(jsonStr) as ActaData;
@@ -28,27 +27,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'La Skill no devolvió JSON válido', raw: salidaRaw }, { status: 500 });
     }
 
-    // Generar .docx en memoria
     const docxBuffer = await generarDocx(acta);
     const archivoBase64 = docxBuffer.toString('base64');
     const hashSha256 = createHash('sha256').update(docxBuffer).digest('hex');
 
-    // Verificar duplicado
     const existente = await prisma.documento.findUnique({ where: { hashSha256 } });
     if (existente) {
       return NextResponse.json({ error: 'Este acta ya existe', documentoId: existente.id }, { status: 409 });
     }
 
-    // Generar embedding del resumen + puntos tratados
     const textoEmbedding = [acta.resumen, ...acta.puntosTratados].join(' ');
     let embedding: number[] = [];
     try {
       embedding = await getEmbedding(textoEmbedding);
     } catch {
-      // embedding falla silencioso — el acta se guarda igual
+      // embedding falla silencioso
     }
 
-    // Guardar Documento
+    // Guardar Documento sin campo embedding (es Unsupported en Prisma)
     const doc = await prisma.documento.create({
       data: {
         nombre: `${acta.titulo ?? 'Acta'} — ${acta.fecha ?? new Date().toISOString().slice(0, 10)}.docx`,
@@ -64,11 +60,18 @@ export async function POST(req: NextRequest) {
         textoExtraido: texto.slice(0, 8_000),
         creadoPor: actor,
         ...(proyectoId ? { proyectoId } : {}),
-        ...(embedding.length > 0
-          ? { embedding: `[${embedding.join(',')}]` }
-          : {}),
       },
     });
+
+    // Actualizar embedding con SQL raw (vector(1024) no soportado en Prisma Client)
+    if (embedding.length > 0) {
+      const vectorStr = `[${embedding.join(',')}]`;
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Documento" SET embedding = $1::vector WHERE id = $2`,
+        vectorStr,
+        doc.id,
+      );
+    }
 
     await logEvento({
       entidad: 'DOCUMENTO',
@@ -93,4 +96,3 @@ export async function GET() {
   });
   return NextResponse.json(actas);
 }
-
