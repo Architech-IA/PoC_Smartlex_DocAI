@@ -2,48 +2,44 @@
 
 import Link from 'next/link';
 
+const acciones = [
+  { href: '/actas/nueva', label: 'Nueva Acta', desc: 'Genera un acta estructurada desde un transcript de reunión', badge: 'IA', color: '#f59e0b' },
+  { href: '/documentos/subir', label: 'Subir Documentos', desc: 'Carga contratos, formatos o actas antiguas — se clasifican automáticamente', badge: 'Próximo', color: '#6b7280' },
+  { href: '/buscar', label: 'Búsqueda Semántica', desc: 'Encuentra documentos por significado y haz preguntas sobre el acervo', badge: 'Próximo', color: '#6b7280' },
+  { href: '/auditoria', label: 'Auditoría', desc: 'Log completo de acciones sobre cada documento', badge: 'Próximo', color: '#6b7280' },
+];
+
 export default function GestorPage() {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: '#050505',
-        gap: '24px',
-        padding: '40px 20px',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      <div
-        style={{
-          border: '1px dashed #333',
-          borderRadius: 16,
-          padding: '48px 40px',
-          maxWidth: 480,
-          textAlign: 'center',
-          color: '#555',
-        }}
-      >
-        <p style={{ fontSize: 32, marginBottom: 16 }}>📁</p>
-        <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 600, color: '#888' }}>
-          Gestor Documental
-        </h2>
-        <p style={{ margin: '0 0 24px', fontSize: 13, lineHeight: 1.6 }}>
-          Esta sección se construye en las próximas sesiones: actas, contratos, búsqueda semántica y alertas de vencimiento.
-        </p>
-        <Link
-          href="/"
-          style={{
-            fontSize: 13,
-            color: '#f59e0b',
-            textDecoration: 'none',
-          }}
-        >
-          ← Volver al inicio
-        </Link>
+    <div className="min-h-screen bg-gray-950 text-gray-100 p-6 font-sans">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <Link href="/" className="text-gray-400 hover:text-white text-sm">← Inicio</Link>
+          <span className="text-gray-600">/</span>
+          <h1 className="text-xl font-semibold">Gestor Documental</h1>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {acciones.map((a) => (
+            <Link
+              key={a.href}
+              href={a.href}
+              className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors group"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-medium text-sm text-white">{a.label}</span>
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                  style={{ background: a.color + '22', color: a.color }}
+                >
+                  {a.badge}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed">{a.desc}</p>
+              <span className="text-xs mt-3 block" style={{ color: a.color }}>Abrir →</span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

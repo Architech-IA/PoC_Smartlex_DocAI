@@ -19,8 +19,17 @@ const INGESTA_BASE_PATH = process.env.INGESTA_BASE_PATH ?? '/tmp/ingesta';
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const DEBOUNCE_MS = 2_000;
 
-// Tipos de archivo que procesa el watcher (excluye el directorio Procesados/ mismo)
+// Archivos de transcript de Tactiq (se procesan como actas)
+const EXTENSIONES_TRANSCRIPT = /\.(txt|md)$/i;
+// Todos los demás documentos aceptados
+const EXTENSIONES_DOCUMENTO = /\.(pdf|doc|docx)$/i;
 const EXTENSIONES_ACEPTADAS = /\.(txt|md|pdf|doc|docx)$/i;
+
+function esTranscript(filePath: string): boolean {
+  // Detecta si el archivo viene de la subcarpeta de Tactiq o tiene extensión de transcript
+  const enCarpetaTactiq = filePath.toLowerCase().includes('tactiq') || filePath.toLowerCase().includes('transcripts');
+  return enCarpetaTactiq && EXTENSIONES_TRANSCRIPT.test(filePath);
+}
 
 interface ClasificacionResult {
   tipo?: string;
@@ -114,6 +123,12 @@ async function procesarArchivo(filePath: string): Promise<void> {
   await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor: 'watcher', detalle: `Detectado por watcher en ${origenCarpeta}` });
 
   // Encolar Skill de clasificación
+  // Ramificar según tipo de archivo
+  if (esTranscript(filePath)) {
+    await procesarTranscript(filePath, buffer, doc);
+    return;
+  }
+
   try {
     const texto = buffer.toString('utf8').slice(0, 8_000); // primeros 8k chars al modelo
     const input = JSON.stringify({ nombre, contenido: texto });
@@ -150,6 +165,64 @@ async function procesarArchivo(filePath: string): Promise<void> {
     await prisma.documento.update({ where: { id: doc.id }, data: { estado: 'ERROR' } });
     await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'ERROR_PROCESAMIENTO', actor: 'watcher', detalle });
     console.error(`[watcher] Fallo clasificando ${nombre}:`, err);
+  }
+}
+
+async function procesarTranscript(
+  filePath: string,
+  buffer: Buffer,
+  doc: { id: string },
+): Promise<void> {
+  const nombre = basename(filePath);
+  const origenCarpeta = dirname(filePath);
+  const texto = buffer.toString('utf8');
+
+  try {
+    const { generarDocx } = await import('@/lib/docx');
+    const { getEmbedding } = await import('@/lib/embeddings');
+    const { createHash } = await import('node:crypto');
+
+    const salidaRaw = await runSkill('generar-acta', texto.slice(0, 12_000));
+    let acta;
+    try { acta = JSON.parse(salidaRaw); } catch { acta = { titulo: nombre, fecha: new Date().toISOString().slice(0, 10), resumen: salidaRaw, participantes: [], puntosTratados: [], acuerdos: [], proximosPasos: [] }; }
+
+    const docxBuffer = await generarDocx(acta);
+    const archivoBase64 = docxBuffer.toString('base64');
+    const hashDocx = createHash('sha256').update(docxBuffer).digest('hex');
+
+    const textoEmbedding = [acta.resumen ?? '', ...(acta.puntosTratados ?? [])].join(' ');
+    let embedding: number[] = [];
+    try { embedding = await getEmbedding(textoEmbedding); } catch { /* silencioso */ }
+
+    await prisma.documento.update({
+      where: { id: doc.id },
+      data: {
+        nombre: `${acta.titulo ?? 'Acta'} — ${acta.fecha ?? new Date().toISOString().slice(0, 10)}.docx`,
+        tipo: 'ACTA',
+        origen: 'GENERADO',
+        archivoBase64,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        tamanoBytes: docxBuffer.length,
+        hashSha256: hashDocx,
+        estado: 'LISTO',
+        resumen: acta.resumen ?? null,
+        datosClave: JSON.stringify({ participantes: acta.participantes, fecha: acta.fecha }),
+        textoExtraido: texto.slice(0, 8_000),
+        ...(embedding.length > 0 ? { embedding: `[${embedding.join(',')}]` } : {}),
+      },
+    });
+
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: `Acta generada desde transcript: ${nombre}` });
+
+    const destDir = join(origenCarpeta, 'Procesados');
+    await mkdir(destDir, { recursive: true });
+    await rename(filePath, join(destDir, nombre));
+    console.log(`[watcher] Transcript procesado como acta: ${nombre}`);
+  } catch (err) {
+    const detalle = err instanceof Error ? err.message : String(err);
+    await prisma.documento.update({ where: { id: doc.id }, data: { estado: 'ERROR' } });
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'ERROR_PROCESAMIENTO', actor: 'watcher', detalle });
+    console.error(`[watcher] Fallo generando acta desde ${nombre}:`, err);
   }
 }
 
