@@ -11,15 +11,17 @@ export async function runSkill(skill: string, input: string): Promise<string> {
   const tarea = colaActiva.then(
     () =>
       new Promise<string>((resolve, reject) => {
-        execFile(
+        const proc = execFile(
           'claude',
-          ['-p', prompt, '--output-format', 'text', '--dangerously-skip-permissions'],
+          ['-p', prompt, '--output-format', 'text'],
           { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 },
           (err, stdout, stderr) => {
             if (err) reject(new Error(stderr || err.message));
             else resolve(stdout.trim());
           },
         );
+        // Cerrar stdin explícitamente para que el CLI no espere input
+        proc.stdin?.end();
       }),
   );
 
