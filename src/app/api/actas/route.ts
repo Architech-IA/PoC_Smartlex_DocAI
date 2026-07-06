@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
 
     let acta: ActaData;
     try {
-      acta = JSON.parse(salidaRaw) as ActaData;
+      // El modelo puede envolver el JSON en bloques de código markdown — extraerlo si es el caso
+      const jsonMatch = salidaRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : salidaRaw.trim();
+      acta = JSON.parse(jsonStr) as ActaData;
     } catch {
       return NextResponse.json({ error: 'La Skill no devolvió JSON válido', raw: salidaRaw }, { status: 500 });
     }
@@ -90,3 +93,4 @@ export async function GET() {
   });
   return NextResponse.json(actas);
 }
+
