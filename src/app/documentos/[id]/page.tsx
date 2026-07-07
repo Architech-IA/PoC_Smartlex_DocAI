@@ -7,6 +7,7 @@ import {
   Tag, FolderOpen, User, AlertCircle, Loader2, GitBranch,
 } from 'lucide-react'
 import Link from 'next/link'
+import VersionesTimeline, { type VersionItem } from '@/components/VersionesTimeline'
 
 interface Documento {
   id: string
@@ -69,6 +70,10 @@ export default function DocumentoDetallePage() {
   const [archivando, setArchivando] = useState(false)
   const [actor] = useState('sistema')
 
+  // Versiones: se cargan desde el endpoint de cadena completa
+  const [versiones, setVersiones] = useState<VersionItem[]>([])
+  const [cargandoVersiones, setCargandoVersiones] = useState(false)
+
   useEffect(() => {
     fetch(`/api/documentos/${id}`, { headers: { 'x-actor': actor } })
       .then(r => r.ok ? r.json() : Promise.reject('No encontrado'))
@@ -76,6 +81,17 @@ export default function DocumentoDetallePage() {
       .catch(() => setError('No se pudo cargar el documento'))
       .finally(() => setCargando(false))
   }, [id, actor])
+
+  // Cargar cadena de versiones al entrar en esa pestaña
+  useEffect(() => {
+    if (tab !== 'versiones' || versiones.length > 0) return
+    setCargandoVersiones(true)
+    fetch(`/api/documentos/${id}/versiones`)
+      .then(r => r.json())
+      .then((data: VersionItem[]) => setVersiones(data))
+      .catch(console.error)
+      .finally(() => setCargandoVersiones(false))
+  }, [tab, id, versiones.length])
 
   const archivar = async () => {
     if (!doc || !confirm('¿Archivar este documento? Seguirá existiendo pero no aparecerá en búsquedas normales.')) return
@@ -110,6 +126,10 @@ export default function DocumentoDetallePage() {
     try { return doc.datosClave ? JSON.parse(doc.datosClave) as Record<string, unknown> : null }
     catch { return null }
   })()
+
+  // La pestaña Versiones solo se muestra si hay historial
+  const tieneHistorial = doc.versiones.length > 0 || !!doc.documentoPadre
+  const tabs: Tab[] = tieneHistorial ? ['detalle', 'versiones', 'auditoria'] : ['detalle', 'auditoria']
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
@@ -161,14 +181,16 @@ export default function DocumentoDetallePage() {
 
         {/* Tabs */}
         <div className="flex border-b border-gray-800">
-          {(['detalle', 'versiones', 'auditoria'] as Tab[]).map(t => (
+          {tabs.map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`px-4 py-2 text-sm capitalize transition-colors border-b-2 -mb-px
                 ${tab === t ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
             >
-              {t === 'versiones' ? `Versiones${doc.versiones.length > 0 ? ` (${doc.versiones.length + 1})` : ''}` : t}
+              {t === 'versiones'
+                ? `Versiones${versiones.length > 0 ? ` (${versiones.length})` : ''}`
+                : t}
             </button>
           ))}
         </div>
@@ -224,32 +246,16 @@ export default function DocumentoDetallePage() {
         {/* Tab: Versiones */}
         {tab === 'versiones' && (
           <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-5">
-            {doc.versiones.length === 0 && !doc.documentoPadre ? (
-              <p className="text-sm text-gray-500 text-center py-6">
-                Este documento no tiene versiones anteriores.<br />
-                <span className="text-xs text-gray-600">El historial de versiones se gestionará en la Sesión 7.</span>
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {doc.documentoPadre && (
-                  <div className="text-xs text-gray-500 mb-3">
-                    Versión anterior:{' '}
-                    <Link href={`/documentos/${doc.documentoPadre.id}`} className="text-cyan-400 hover:underline">
-                      v{doc.documentoPadre.versionNumero} — {doc.documentoPadre.nombre}
-                    </Link>
-                  </div>
-                )}
-                {[...doc.versiones].reverse().map(v => (
-                  <div key={v.id} className="flex items-center justify-between p-3 bg-gray-900 rounded-lg border border-gray-800">
-                    <div>
-                      <span className="text-sm text-gray-200 font-medium">v{v.versionNumero}</span>
-                      {v.esVersionActual && <span className="ml-2 text-xs text-cyan-400 bg-cyan-950/40 px-1.5 py-0.5 rounded">actual</span>}
-                      <p className="text-xs text-gray-500 mt-0.5">{fmt(v.createdAt)} · {formatBytes(v.tamanoBytes)}{v.creadoPor ? ` · ${v.creadoPor}` : ''}</p>
-                    </div>
-                    <Link href={`/documentos/${v.id}`} className="text-xs text-cyan-400 hover:underline">Ver</Link>
-                  </div>
-                ))}
+            {cargandoVersiones ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
               </div>
+            ) : (
+              <VersionesTimeline
+                versiones={versiones}
+                documentoActualId={id}
+                actor={actor}
+              />
             )}
           </div>
         )}
