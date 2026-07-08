@@ -111,7 +111,9 @@ async function procesarArchivo(filePath: string): Promise<void> {
     const salida = await runSkill('clasificar-documento', input);
 
     let clasificacion: ClasificacionResult = {};
-    try { clasificacion = JSON.parse(salida) as ClasificacionResult; }
+    const jsonMatchClas = salida.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const jsonStrClas = jsonMatchClas ? jsonMatchClas[1].trim() : salida.trim();
+    try { clasificacion = JSON.parse(jsonStrClas) as ClasificacionResult; }
     catch { clasificacion = { resumen: salida }; }
 
     const docListo = await prisma.documento.update({
