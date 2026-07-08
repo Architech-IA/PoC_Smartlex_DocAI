@@ -4,8 +4,8 @@ import Link from 'next/link';
 
 const acciones = [
   { href: '/actas/nueva', label: 'Nueva Acta', desc: 'Genera un acta estructurada desde un transcript de reunión', badge: 'IA', color: '#f59e0b' },
-  { href: '/documentos/subir', label: 'Subir Documentos', desc: 'Carga contratos, formatos o actas antiguas — se clasifican automáticamente', badge: 'Próximo', color: '#6b7280' },
-  { href: '/buscar', label: 'Búsqueda Semántica', desc: 'Encuentra documentos por significado y haz preguntas sobre el acervo', badge: 'Próximo', color: '#6b7280' },
+  { href: '/documentos/subir', label: 'Subir Documentos', desc: 'Carga contratos, formatos o actas antiguas — se clasifican automáticamente', badge: 'Nuevo', color: '#06b6d4' },
+  { href: '/buscar', label: 'Búsqueda Semántica', desc: 'Encuentra documentos por significado y haz preguntas sobre el acervo', badge: 'Nuevo', color: '#06b6d4' },
   { href: '/auditoria', label: 'Auditoría', desc: 'Log completo de acciones sobre cada documento', badge: 'Nuevo', color: '#8b5cf6' },
 ];
 
