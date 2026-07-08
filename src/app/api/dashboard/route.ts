@@ -99,15 +99,16 @@ export async function GET() {
 
     const nowMs = Date.now();
 
+    type DocRow = { id: string; nombre: string; tipo: string; estado: string; createdAt: Date; updatedAt?: Date };
     const huerfanos = {
-      sinProyecto: sinProyecto.map((d) => ({
+      sinProyecto: sinProyecto.map((d: DocRow) => ({
         id: d.id,
         nombre: d.nombre,
         tipo: d.tipo,
         estado: d.estado,
         createdAt: d.createdAt,
       })),
-      atascados: atascadosRaw.map((d) => ({
+      atascados: atascadosRaw.map((d: DocRow) => ({
         id: d.id,
         nombre: d.nombre,
         tipo: d.tipo,

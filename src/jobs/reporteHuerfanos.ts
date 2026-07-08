@@ -40,14 +40,14 @@ export async function generarReporteHuerfanos(): Promise<HuerfanosReport> {
   const ahora = Date.now();
 
   return {
-    sinProyecto: sinProyecto.map((d) => ({
+    sinProyecto: sinProyecto.map((d: { id: string; nombre: string; tipo: string; estado: string; createdAt: Date }) => ({
       id: d.id,
       nombre: d.nombre,
       tipo: d.tipo,
       estado: d.estado,
       createdAt: d.createdAt,
     })),
-    atascados: atascadosRaw.map((d) => ({
+    atascados: atascadosRaw.map((d: { id: string; nombre: string; tipo: string; estado: string; createdAt: Date; updatedAt: Date }) => ({
       id: d.id,
       nombre: d.nombre,
       tipo: d.tipo,

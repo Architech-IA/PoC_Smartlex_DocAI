@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { runSkill } from '@/lib/claudeCode';
 import { logEvento } from '@/lib/auditoria';
+import { escribirNota } from '@/lib/obsidian';
 
 const INGESTA_BASE_PATH = process.env.INGESTA_BASE_PATH ?? '/tmp/ingesta';
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
@@ -113,7 +114,7 @@ async function procesarArchivo(filePath: string): Promise<void> {
     try { clasificacion = JSON.parse(salida) as ClasificacionResult; }
     catch { clasificacion = { resumen: salida }; }
 
-    doc = await prisma.documento.update({
+    const docListo = await prisma.documento.update({
       where: { id: doc.id },
       data: {
         tipo: clasificacion.tipo ?? 'OTRO',
@@ -123,9 +124,15 @@ async function procesarArchivo(filePath: string): Promise<void> {
         textoExtraido: clasificacion.textoExtraido ?? texto,
         estado: 'LISTO',
       },
+      include: { proyecto: { select: { nombre: true } } },
     });
+    doc = docListo;
 
     await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: 'Clasificado' });
+
+    await escribirNota({ ...docListo, proyectoNombre: docListo.proyecto?.nombre ?? null }).catch((e) =>
+      console.error('[watcher] Error escribiendo nota Obsidian:', e)
+    );
 
     const destDir = join(origenCarpeta, 'Procesados');
     await mkdir(destDir, { recursive: true });
@@ -195,6 +202,13 @@ async function procesarTranscript(filePath: string, buffer: Buffer, doc: { id: s
     }
 
     await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'MODIFICAR', actor: 'watcher', detalle: `Acta generada: ${nombre}` });
+
+    const docActualizado = await prisma.documento.findUnique({ where: { id: doc.id }, include: { proyecto: { select: { nombre: true } } } });
+    if (docActualizado) {
+      await escribirNota({ ...docActualizado, proyectoNombre: docActualizado.proyecto?.nombre ?? null }).catch((e) =>
+        console.error('[watcher] Error escribiendo nota Obsidian (acta):', e)
+      );
+    }
 
     const destDir = join(origenCarpeta, 'Procesados');
     await mkdir(destDir, { recursive: true });

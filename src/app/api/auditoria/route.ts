@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
         select: { id: true },
         take: 100,
       });
-      entidadIds = docs.map((d) => d.id);
-      if (entidadIds.length === 0) {
+      entidadIds = docs.map((d: { id: string }) => d.id);
+      if ((entidadIds as string[]).length === 0) {
         return NextResponse.json({ eventos: [], total: 0, page, limit });
       }
     }

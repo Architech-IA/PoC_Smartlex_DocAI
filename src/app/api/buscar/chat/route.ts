@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const proyectoCondicion = proyectoId ? `AND "proyectoId" = '${proyectoId.replace(/'/g, "''")}'` : '';
 
     // 2. Recuperar documentos más relevantes por similitud semántica
-    const docs = await prisma.$queryRawUnsafe<DocRow[]>(`
+    const docs = await (prisma.$queryRawUnsafe as (sql: string, ...vals: unknown[]) => Promise<DocRow[]>)(`
       SELECT id, nombre, tipo, area, resumen, "textoExtraido"
       FROM "Documento"
       WHERE estado != 'ARCHIVADO'

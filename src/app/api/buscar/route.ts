@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       LIMIT $2
     `;
 
-    const resultados = await prisma.$queryRawUnsafe<ResultRow[]>(sql, vectorStr, limitN);
+    const resultados = await (prisma.$queryRawUnsafe as (sql: string, ...vals: unknown[]) => Promise<ResultRow[]>)(sql, vectorStr, limitN);
 
     return NextResponse.json({
       query,

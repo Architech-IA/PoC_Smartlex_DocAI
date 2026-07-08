@@ -34,6 +34,54 @@ Crear el directorio de logs si no existe:
 mkdir -p /var/log/smartlex
 ```
 
+## Segundo Cerebro — Obsidian + Notion
+
+### Variables de entorno requeridas
+
+```env
+OBSIDIAN_VAULT_PATH=/mnt/gdrive/SmartlexVault   # Carpeta del vault montada con rclone
+NOTION_TOKEN=secret_xxxx                          # Token de integración Notion (solo lectura)
+```
+
+### Montar vault con rclone
+
+```bash
+# Instalar rclone y configurar Google Drive
+rclone config  # seguir asistente para crear remote "gdrive"
+
+# Montar el vault (persistente)
+rclone mount gdrive:SmartlexVault /mnt/gdrive/SmartlexVault \
+  --vfs-cache-mode writes --daemon
+
+# Agregar al crontab para que monte al reiniciar
+@reboot rclone mount gdrive:SmartlexVault /mnt/gdrive/SmartlexVault --vfs-cache-mode writes --daemon
+```
+
+### Cron: Sincronización de Notion
+
+El job `src/jobs/cron-notion.ts` consulta páginas modificadas en Notion desde la última ejecución, las sintetiza con Claude Code y las escribe como notas `.md` en `OBSIDIAN_VAULT_PATH/Expedientes-Notion/`.
+
+Agregar al crontab del VPS (`crontab -e`):
+
+```cron
+# Sincronización Notion → Obsidian — cada 6 horas
+0 */6 * * * cd /root/PoC_Smartlex_DocAI && node .next/server/jobs/cron-notion.js >> logs/notion-sync.log 2>&1
+```
+
+El timestamp de la última sincronización se guarda en `data/notion-sync-ts.txt`.
+
+### Estructura del vault generada
+
+```
+SmartlexVault/
+  Documentos/
+    ACTA/          ← actas generadas desde transcripciones
+    CONTRATO/      ← contratos clasificados
+    OTRO/          ← resto de tipos
+  Expedientes-Notion/
+    2026-07-08-Nombre-Expediente.md   ← páginas de Notion sintetizadas
+```
+
 ## Despliegue en VPS (Hostinger KVM2)
 
 ```bash
