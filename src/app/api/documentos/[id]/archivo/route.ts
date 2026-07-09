@@ -7,6 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const inline = req.nextUrl.searchParams.get('inline') === '1';
 
   const doc = await prisma.documento.findUnique({
     where: { id },
@@ -19,13 +20,21 @@ export async function GET(
 
   const buffer = Buffer.from(doc.archivoBase64, 'base64');
   const actor = req.headers.get('x-actor') ?? 'sistema';
-  await logEvento({ entidad: 'DOCUMENTO', entidadId: id, accion: 'DESCARGAR', actor, detalle: doc.nombre });
+
+  if (!inline) {
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: id, accion: 'DESCARGAR', actor, detalle: doc.nombre });
+  }
+
+  const disposition = inline
+    ? `inline; filename="${encodeURIComponent(doc.nombre)}"`
+    : `attachment; filename="${encodeURIComponent(doc.nombre)}"`;
 
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': doc.mimeType ?? 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.nombre)}"`,
+      'Content-Disposition': disposition,
       'Content-Length': String(buffer.length),
+      ...(inline ? { 'X-Frame-Options': 'SAMEORIGIN' } : {}),
     },
   });
 }

@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 interface LogEventoParams {
-  entidad: 'DOCUMENTO' | 'PROYECTO';
+  entidad: 'DOCUMENTO' | 'PROYECTO' | 'BRONZE' | 'GOLD';
   entidadId: string;
   accion:
     | 'CREAR'
@@ -10,7 +10,8 @@ interface LogEventoParams {
     | 'MODIFICAR'
     | 'ARCHIVAR'
     | 'RESTAURAR_VERSION'
-    | 'ERROR_PROCESAMIENTO';
+    | 'ERROR_PROCESAMIENTO'
+    | 'ASIGNAR_CLIENTE';
   actor?: string;
   detalle?: string;
 }
@@ -27,7 +28,6 @@ export async function logEvento(params: LogEventoParams): Promise<void> {
       },
     });
   } catch (err) {
-    // El fallo de auditoría no debe bloquear el flujo principal.
     console.error('[auditoria] Error al escribir EventoAuditoria:', err);
   }
 }

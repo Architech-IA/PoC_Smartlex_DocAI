@@ -27,6 +27,7 @@ services:
       OLLAMA_EMBEDDING_DIM: "1024"
       INGESTA_BASE_PATH: "/app/ingesta"
       OBSIDIAN_VAULT_PATH: "/app/vault"
+      FS_EXPLORER_ROOTS: "/app/ingesta,/app/vault"
       NOTION_TOKEN: ""
       MAX_DOCUMENTO_MB: "15"
       RETENCION_ANIOS: "10"

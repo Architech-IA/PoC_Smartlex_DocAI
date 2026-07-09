@@ -10,6 +10,38 @@ datasource db {
   extensions = [pgvector(map: "vector")]
 }
 
+// ── BRONZE — archivo crudo recibido del watcher ────────────────────────────
+model DocBronze {
+  id           String    @id @default(cuid())
+  hashSha256   String    @unique
+  nombre       String
+  mimeType     String?
+  tamanoBytes  Int?
+  rutaFisica   String                         // ruta en /app/ingesta
+  socio        String?                        // subcarpeta de origen (SocioA, SocioB…)
+  estado       String    @default("RECIBIDO") // RECIBIDO | DUPLICADO | ERROR_EXTRACCION | ENVIADO_A_SILVER
+  detalle      String?                        // mensaje de error si aplica
+  ingeridoEn   DateTime  @default(now())
+
+  documento    Documento?                     // 1:1 cuando se procesa a silver
+}
+
+// ── CLIENTES — directorio simple de clientes de la firma ──────────────────
+model Cliente {
+  id           String    @id @default(cuid())
+  nombre       String
+  nit          String?   @unique
+  tipo         String    @default("EMPRESA")  // EMPRESA | PERSONA_NATURAL
+  contacto     String?
+  notas        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  gold         DocGold[]
+  expedientes  Expediente[]
+}
+
+// ── SILVER — documento procesado por IA ───────────────────────────────────
 model Proyecto {
   id            String      @id @default(cuid())
   nombre        String
@@ -22,11 +54,17 @@ model Proyecto {
 
 model Documento {
   id               String    @id @default(cuid())
+  // Trazabilidad medallion
+  bronzeId         String?   @unique
+  bronze           DocBronze? @relation(fields: [bronzeId], references: [id])
+  socio            String?                        // quién subió el doc (heredado de bronze)
+  // Proyecto
   proyectoId       String?
   proyecto         Proyecto? @relation(fields: [proyectoId], references: [id])
+  // Datos del archivo
   nombre           String
-  tipo             String    // CONTRATO | FORMATO | ACTA | DOCUMENTACION_LEGAL | OTRO
-  area             String?   // Laboral, Civil, Mercantil, Tributario, Societario, etc.
+  tipo             String    // CONTRATO | FORMATO | ACTA | DOCUMENTACION_LEGAL | PODER | DEMANDA | OTRO
+  area             String?
   origen           String    // SUBIDO | GENERADO
   origenCarpeta    String?
   archivoBase64    String?
@@ -34,10 +72,12 @@ model Documento {
   tamanoBytes      Int?
   hashSha256       String    @unique
   estado           String    @default("PROCESANDO") // PROCESANDO | LISTO | ERROR | ARCHIVADO
+  // Enriquecimiento IA
   resumen          String?
   datosClave       String?
   textoExtraido    String?
   embedding        Unsupported("vector(1024)")?
+  // Versiones
   documentoPadreId String?
   documentoPadre   Documento?  @relation("VersionesDocumento", fields: [documentoPadreId], references: [id])
   versiones        Documento[] @relation("VersionesDocumento")
@@ -48,14 +88,50 @@ model Documento {
   updatedAt        DateTime    @updatedAt
 
   eventos          EventoAuditoria[]
+  gold             DocGold?                        // asignación a cliente (gold)
+}
+
+// ── GOLD — documento asignado a un cliente ────────────────────────────────
+model DocGold {
+  id             String      @id @default(cuid())
+  documentoId    String      @unique
+  documento      Documento   @relation(fields: [documentoId], references: [id])
+  clienteId      String
+  cliente        Cliente     @relation(fields: [clienteId], references: [id])
+  expedienteId   String?
+  expediente     Expediente? @relation(fields: [expedienteId], references: [id])
+  rutaCliente    String?                           // /app/gold/clientes/{cliente}/{expediente}/
+  asignadoPor    String?
+  asignadoEn     DateTime    @default(now())
+  notas          String?
+  estado         String      @default("LISTO")     // LISTO | ARCHIVADO
+}
+
+model Expediente {
+  id           String    @id @default(cuid())
+  clienteId    String
+  cliente      Cliente   @relation(fields: [clienteId], references: [id])
+  codigo       String?
+  nombre       String
+  descripcion  String?
+  estado       String    @default("ACTIVO")  // ACTIVO | CERRADO | EN_LITIGIO | ARCHIVADO
+  abogado      String?
+  radicado     String?
+  fechaInicio  DateTime?
+  fechaCierre  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  gold         DocGold[]
+
+  @@unique([clienteId, codigo])
 }
 
 model EventoAuditoria {
   id          String     @id @default(cuid())
-  entidad     String     // DOCUMENTO | PROYECTO
+  entidad     String     // DOCUMENTO | PROYECTO | BRONZE | GOLD
   entidadId   String
   documento   Documento? @relation(fields: [entidadId], references: [id])
-  accion      String     // CREAR | VER | DESCARGAR | MODIFICAR | ARCHIVAR | RESTAURAR_VERSION | ERROR_PROCESAMIENTO
+  accion      String     // CREAR | VER | DESCARGAR | MODIFICAR | ARCHIVAR | RESTAURAR_VERSION | ERROR_PROCESAMIENTO | ASIGNAR_CLIENTE
   actor       String?
   detalle     String?
   createdAt   DateTime   @default(now())

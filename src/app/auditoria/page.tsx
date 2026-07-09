@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Download, Search, X } from 'lucide-react';
+import GestorLayout from '@/components/GestorLayout';
 
 const ACCIONES = ['CREAR', 'VER', 'DESCARGAR', 'MODIFICAR', 'ARCHIVAR', 'RESTAURAR_VERSION', 'ERROR_PROCESAMIENTO'];
 
@@ -150,9 +151,17 @@ export default function AuditoriaPage() {
   const hayFiltros = documento || accionesSeleccionadas.length > 0 || desde || hasta || actor;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
+    <GestorLayout activeHref="/auditoria">
       <div className="max-w-6xl mx-auto space-y-6">
 
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-[#555]">
+          <a href="/" className="hover:text-[#aaa] transition-colors">Inicio</a>
+          <span>/</span>
+          <a href="/gestor" className="hover:text-[#aaa] transition-colors">Gestor</a>
+          <span>/</span>
+          <span className="text-white">Auditoria</span>
+        </nav>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -329,6 +338,6 @@ export default function AuditoriaPage() {
           </div>
         )}
       </div>
-    </div>
+    </GestorLayout>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import GestorLayout from '@/components/GestorLayout';
 import Link from 'next/link';
 
 interface Participante { nombre: string; rol?: string }
@@ -68,7 +69,7 @@ export default function ActaNuevaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
+    <GestorLayout activeHref="/actas/nueva">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/" className="text-gray-400 hover:text-white text-sm">← Inicio</Link>
@@ -207,6 +208,6 @@ export default function ActaNuevaPage() {
           </div>
         )}
       </div>
-    </div>
+    </GestorLayout>
   );
 }

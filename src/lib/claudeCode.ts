@@ -1,43 +1,36 @@
-import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+// Clasificador local en el host — el contenedor lo llama vía host-gateway
+const CLASIFICADOR_URL = process.env.CLASIFICADOR_URL ?? 'http://host-gateway:3010';
 
-// Ruta al directorio de Skills, relativa al proyecto
-const SKILLS_DIR = join(process.cwd(), 'skills');
-
-// Cola secuencial — un solo Skill a la vez porque la cuenta de servicio es compartida.
+// Cola secuencial — una petición a la vez
 let colaActiva: Promise<unknown> = Promise.resolve();
 
 export async function runSkill(skill: string, input: string): Promise<string> {
-  // Leer el contenido del archivo de instrucción de la Skill
-  let instruccion: string;
-  try {
-    instruccion = await readFile(join(SKILLS_DIR, `${skill}.md`), 'utf8');
-  } catch {
-    throw new Error(`Skill no encontrada: ${skill}.md en ${SKILLS_DIR}`);
-  }
+  const endpoint = skill === 'clasificar-documento' ? '/clasificar'
+    : skill === 'generar-acta' ? '/generar-acta'
+    : null;
 
-  // El sistema prompt lleva la instrucción de la Skill; el prompt del usuario lleva el input
-  const tarea = colaActiva.then(
-    () =>
-      new Promise<string>((resolve, reject) => {
-        const proc = execFile(
-          'claude',
-          [
-            '-p', input,
-            '--system-prompt', instruccion,
-            '--output-format', 'text',
-          ],
-          { timeout: 120_000, maxBuffer: 10 * 1024 * 1024 },
-          (err, stdout, stderr) => {
-            if (err) reject(new Error(stderr || err.message));
-            else resolve(stdout.trim());
-          },
-        );
-        proc.stdin?.end();
-      }),
-  );
+  if (!endpoint) throw new Error(`Skill no soportada en clasificador local: ${skill}`);
+
+  const tarea = colaActiva.then(async () => {
+    let body: unknown;
+    try { body = JSON.parse(input); } catch { body = input; }
+
+    const res = await fetch(`${CLASIFICADOR_URL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+      throw new Error(err.error ?? res.statusText);
+    }
+
+    const data = await res.json() as { resultado: string };
+    return data.resultado;
+  });
 
   colaActiva = tarea.catch(() => {});
-  return tarea;
+  return tarea as Promise<string>;
 }
