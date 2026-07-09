@@ -434,7 +434,8 @@ export default function ExploradorPage() {
       const fileRes = await fetch(`/api/fs/download?path=${encodeURIComponent(entry.fullPath)}`);
       const blob = await fileRes.blob();
       const form = new FormData();
-      form.append('file', blob, entry.name);
+      form.append('archivo', blob, entry.name);
+      form.append('origenCarpeta', entry.fullPath.substring(0, entry.fullPath.lastIndexOf('/')));
       const res = await fetch('/api/documentos', { method: 'POST', body: form });
       if (res.ok) {
         showToast('✓ Procesado y registrado en el gestor');
@@ -928,7 +929,7 @@ export default function ExploradorPage() {
                 )}
 
                 {/* Procesar en gestor — oculto si ya está en carpeta Procesados */}
-                {IMPORTABLE.has(focusedEntry.ext ?? '') && !currentPath.includes('procesados') && (
+                {IMPORTABLE.has(focusedEntry.ext ?? '') && currentPath.includes('ingesta') && (
                   <button onClick={() => importar(focusedEntry)} disabled={importing} className="w-full py-1.5 rounded-lg text-xs font-medium mt-2"
                     style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399', opacity: importing ? 0.6 : 1 }}>
                     {importing ? 'Procesando...' : '⤴ Procesar en gestor'}
