@@ -27,7 +27,7 @@ services:
       OLLAMA_EMBEDDING_DIM: "1024"
       INGESTA_BASE_PATH: "/app/ingesta"
       OBSIDIAN_VAULT_PATH: "/app/vault"
-      FS_EXPLORER_ROOTS: "/app/ingesta,/app/vault"
+      FS_EXPLORER_ROOTS: "/app/ingesta,/app/procesados,/app/vault,/app/gold"
       NOTION_TOKEN: ""
       MAX_DOCUMENTO_MB: "15"
       RETENCION_ANIOS: "10"
@@ -40,6 +40,8 @@ services:
     volumes:
       - /root/smartlex-ingesta:/app/ingesta
       - /root/smartlex-vault:/app/vault
+      - /root/smartlex-procesados:/app/procesados
+      - /root/smartlex-gold:/app/gold
       - /root/.claude:/home/nextjs/.claude:ro
       - /root/.claude.json:/home/nextjs/.claude.json:ro
 

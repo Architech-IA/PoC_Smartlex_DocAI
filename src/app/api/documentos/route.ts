@@ -4,9 +4,23 @@ import { runSkill } from '@/lib/claudeCode';
 import { getEmbedding } from '@/lib/embeddings';
 import { logEvento } from '@/lib/auditoria';
 import { createHash } from 'node:crypto';
+import { mkdir, rename } from 'node:fs/promises';
+import { join } from 'node:path';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse');
 
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const MAX_BYTES = MAX_MB * 1_048_576;
+const SILVER_BASE_PATH = process.env.SILVER_BASE_PATH ?? '/app/procesados';
+const TIPO_A_CARPETA: Record<string, string> = {
+  CONTRATO:            'Contratos',
+  ACTA:                'Actas',
+  PODER:               'Poderes',
+  DEMANDA:             'Demandas',
+  FORMATO:             'Formatos',
+  DOCUMENTACION_LEGAL: 'DocumentacionLegal',
+  OTRO:                'Otros',
+};
 
 function inferMime(nombre: string): string {
   if (/\.pdf$/i.test(nombre)) return 'application/pdf';
@@ -45,6 +59,15 @@ export async function POST(req: NextRequest) {
     // Verificar duplicado exacto
     const existente = await prisma.documento.findUnique({ where: { hashSha256 } });
     if (existente) {
+      // Si ya existe pero falló, permitir reprocesamiento: resetear a PROCESANDO
+      if (existente.estado === 'ERROR') {
+        await prisma.documento.update({
+          where: { id: existente.id },
+          data: { estado: 'PROCESANDO', resumen: null, datosClave: null, textoExtraido: null },
+        });
+        clasificarDocumento(existente.id, buffer, archivo.name, actor).catch(() => {});
+        return NextResponse.json({ documentoId: existente.id, estado: 'PROCESANDO', nombre: existente.nombre }, { status: 202 });
+      }
       return NextResponse.json(
         { error: 'Archivo duplicado — ya existe un documento idéntico', documentoId: existente.id, nombre: existente.nombre },
         { status: 409 },
@@ -87,7 +110,17 @@ async function clasificarDocumento(
   actor: string,
 ): Promise<void> {
   try {
-    const texto = buffer.toString('utf8').slice(0, 8_000);
+    let texto = '';
+    try {
+      if (/\.pdf$/i.test(nombre)) {
+        const pdfData = await pdfParse(buffer);
+        texto = (pdfData.text ?? '').slice(0, 8_000);
+      } else {
+        texto = buffer.toString('utf8').slice(0, 8_000);
+      }
+    } catch {
+      texto = buffer.toString('utf8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').slice(0, 8_000);
+    }
     const input = JSON.stringify({ nombre, contenido: texto });
     const salidaRaw = await runSkill('clasificar-documento', input);
 
@@ -142,6 +175,21 @@ async function clasificarDocumento(
         `[${embedding.join(',')}]`,
         docId,
       );
+    }
+
+    // Mover archivo físico a SILVER si viene de BRONZE (origenCarpeta conocida)
+    const docParaMover = await prisma.documento.findUnique({ where: { id: docId }, select: { origenCarpeta: true, nombre: true, tipo: true } });
+    if (docParaMover?.origenCarpeta && docParaMover.origenCarpeta.includes('ingesta')) {
+      try {
+        const tipoFinal = clasificacion.tipo ?? 'OTRO';
+        const subcarpeta = TIPO_A_CARPETA[tipoFinal] ?? 'Otros';
+        const destDir = join(SILVER_BASE_PATH, subcarpeta);
+        await mkdir(destDir, { recursive: true });
+        const srcPath = join(docParaMover.origenCarpeta, docParaMover.nombre);
+        const destPath = join(destDir, docParaMover.nombre);
+        await rename(srcPath, destPath).catch(() => {});
+        await prisma.documento.update({ where: { id: docId }, data: { origenCarpeta: destDir } });
+      } catch { /* silencioso si el archivo ya no existe */ }
     }
 
     const detalle = similitudId

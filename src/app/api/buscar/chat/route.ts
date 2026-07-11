@@ -4,13 +4,17 @@ import { getEmbedding } from '@/lib/embeddings';
 import { runSkill } from '@/lib/claudeCode';
 import { logEvento } from '@/lib/auditoria';
 
-type DocRow = {
-  id: string;
+const MIN_SIMILITUD = 0.25;
+
+type ChunkRow = {
+  documentoId: string;
   nombre: string;
   tipo: string;
   area: string | null;
   resumen: string | null;
   textoExtraido: string | null;
+  texto: string;
+  similitud: number;
 };
 
 interface Fuente {
@@ -33,32 +37,72 @@ export async function POST(req: NextRequest) {
       proyectoId?: string;
       limitDocs?: number;
     };
-    const { pregunta, actor = 'sistema', proyectoId, limitDocs = 5 } = body;
+    const { pregunta, actor = 'sistema', proyectoId, limitDocs = 6 } = body;
 
-    if (!pregunta || pregunta.trim().length === 0) {
+    if (!pregunta?.trim()) {
       return NextResponse.json({ error: 'Se requiere el campo "pregunta"' }, { status: 400 });
     }
 
+    const preguntaClean = pregunta.trim();
+
     // 1. Embedding de la pregunta
-    const embedding = await getEmbedding(pregunta.trim());
+    const embedding = await getEmbedding(preguntaClean);
     if (embedding.length === 0) {
-      return NextResponse.json({ error: 'No se pudo generar el embedding de la pregunta' }, { status: 500 });
+      return NextResponse.json({ error: 'No se pudo generar el embedding' }, { status: 500 });
     }
 
     const vectorStr = `[${embedding.join(',')}]`;
     const limitN = Math.min(Math.max(1, limitDocs), 8);
-    const proyectoCondicion = proyectoId ? `AND "proyectoId" = '${proyectoId.replace(/'/g, "''")}'` : '';
+    const proyectoCond = proyectoId ? `AND d."proyectoId" = '${proyectoId.replace(/'/g, "''")}'` : '';
 
-    // 2. Recuperar documentos más relevantes por similitud semántica
-    const docs = await (prisma.$queryRawUnsafe as (sql: string, ...vals: unknown[]) => Promise<DocRow[]>)(`
-      SELECT id, nombre, tipo, area, resumen, "textoExtraido"
-      FROM "Documento"
-      WHERE estado != 'ARCHIVADO'
-        AND embedding IS NOT NULL
-        ${proyectoCondicion}
-      ORDER BY embedding <=> $1::vector
+    // 2. Búsqueda híbrida: chunk semántico + match exacto (igual que /api/buscar)
+    const sql = `
+      WITH chunk_scores AS (
+        SELECT
+          d.id AS "documentoId",
+          d.nombre,
+          d.tipo,
+          d.area,
+          d.resumen,
+          d."textoExtraido",
+          c.texto,
+          1 - (c.embedding <=> $1::vector) AS similitud_semantica,
+          ts_rank(
+            to_tsvector('simple', coalesce(c.texto,'') || ' ' || coalesce(d.nombre,'') || ' ' || coalesce(d.resumen,'')),
+            plainto_tsquery('simple', $3)
+          ) AS similitud_texto,
+          CASE WHEN (
+            lower(c.texto) LIKE '%' || lower($3) || '%'
+            OR lower(d.nombre) LIKE '%' || lower($3) || '%'
+            OR lower(coalesce(d.resumen,'')) LIKE '%' || lower($3) || '%'
+            OR lower(coalesce(d."textoExtraido",'')) LIKE '%' || lower($3) || '%'
+          ) THEN 1.0 ELSE 0.0 END AS match_exacto
+        FROM "DocumentoChunk" c
+        JOIN "Documento" d ON d.id = c."documentoId"
+        WHERE d.estado != 'ARCHIVADO'
+          AND c.embedding IS NOT NULL
+          ${proyectoCond}
+      ),
+      doc_best AS (
+        SELECT DISTINCT ON ("documentoId")
+          *,
+          GREATEST(
+            similitud_semantica * 0.55 + LEAST(similitud_texto * 3, 0.25) * 0.25 + match_exacto * 0.20,
+            CASE WHEN match_exacto = 1.0 THEN 0.65 ELSE 0.0 END
+          ) AS similitud
+        FROM chunk_scores
+        WHERE similitud_semantica >= ${MIN_SIMILITUD}
+           OR match_exacto = 1.0
+        ORDER BY "documentoId", (similitud_semantica + match_exacto) DESC
+      )
+      SELECT * FROM doc_best
+      ORDER BY similitud DESC
       LIMIT $2
-    `, vectorStr, limitN);
+    `;
+
+    const docs = await (prisma.$queryRawUnsafe as (sql: string, ...vals: unknown[]) => Promise<ChunkRow[]>)(
+      sql, vectorStr, limitN, preguntaClean
+    );
 
     if (docs.length === 0) {
       return NextResponse.json({
@@ -70,16 +114,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Construir input para la Skill
+    // 3. Construir input para la Skill con el fragmento más relevante de cada doc
     const inputSkill = JSON.stringify({
-      pregunta: pregunta.trim(),
+      pregunta: preguntaClean,
       documentos: docs.map(d => ({
-        id: d.id,
+        id: d.documentoId,
         nombre: d.nombre,
         tipo: d.tipo,
         area: d.area ?? '',
         resumen: d.resumen ?? '',
-        fragmento: (d.textoExtraido ?? d.resumen ?? '').slice(0, 1_500),
+        fragmento: (d.texto || d.textoExtraido || d.resumen || '').slice(0, 1_500),
       })),
     });
 
@@ -92,24 +136,20 @@ export async function POST(req: NextRequest) {
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : salidaRaw.trim();
       resultado = JSON.parse(jsonStr) as RespuestaSkill;
     } catch {
-      resultado = {
-        respuesta: salidaRaw.slice(0, 1_000),
-        fuentes: [],
-        confianza: 'BAJA',
-      };
+      resultado = { respuesta: salidaRaw.slice(0, 1_000), fuentes: [], confianza: 'BAJA' };
     }
 
-    // 5. Registrar evento VER en cada documento consultado
+    // 5. Registrar auditoría
     await Promise.all(
       docs.map(d =>
         logEvento({
           entidad: 'DOCUMENTO',
-          entidadId: d.id,
+          entidadId: d.documentoId,
           accion: 'VER',
           actor,
-          detalle: `Consultado en búsqueda semántica: "${pregunta.slice(0, 80)}"`,
-        }),
-      ),
+          detalle: `Chat: "${preguntaClean.slice(0, 80)}"`,
+        })
+      )
     );
 
     return NextResponse.json({

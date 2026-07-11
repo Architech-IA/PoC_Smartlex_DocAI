@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Search, MessageSquare, FileText, File, Loader2,
-  AlertCircle, ArrowRight, ChevronDown, ChevronUp, Sparkles,
+  AlertCircle, Sparkles,
   X, ExternalLink, Download, Eye,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -18,6 +18,8 @@ interface DocResultado {
   resumen?: string
   similitud: number
   createdAt: string
+  snippet?: string
+  chunkIndice?: number
 }
 
 interface Fuente {
@@ -42,11 +44,6 @@ const TIPO_STYLE: Record<string, { label: string; cls: string }> = {
   OTRO:                { label: 'Otro',     cls: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/25' },
 }
 
-const CONFIANZA_STYLE: Record<string, string> = {
-  ALTA:  'text-emerald-400',
-  MEDIA: 'text-amber-400',
-  BAJA:  'text-red-400',
-}
 
 function IconoArchivo({ nombre }: { nombre: string }) {
   if (/\.pdf$/i.test(nombre)) return <File className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
@@ -307,6 +304,11 @@ export default function BuscarPage() {
   const [resultados, setResultados] = useState<DocResultado[] | null>(null)
   const [errorBusqueda, setErrorBusqueda] = useState('')
   const [docPreview, setDocPreview] = useState<DocPreview | null>(null)
+  const [queryExpandida, setQueryExpandida] = useState<string | undefined>()
+  const [historialBusquedas, setHistorialBusquedas] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('smartlex_search_history') || '[]') as string[] } catch { return [] }
+  })
   const abrirVisor = useCallback((doc: DocResultado) => {
     setDocPreview({ id: doc.id, nombre: doc.nombre, tipo: doc.tipo, area: doc.area, resumen: doc.resumen })
   }, [])
@@ -315,7 +317,6 @@ export default function BuscarPage() {
   const [chateando, setChateando] = useState(false)
   const [historial, setHistorial] = useState<MensajeChat[]>([])
   const [errorChat, setErrorChat] = useState('')
-  const [fuentesAbiertas, setFuentesAbiertas] = useState<Set<number>>(new Set())
 
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -325,15 +326,25 @@ export default function BuscarPage() {
     setBuscando(true)
     setErrorBusqueda('')
     setResultados(null)
+    setQueryExpandida(undefined)
     try {
       const res = await fetch('/api/buscar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query.trim(), limit: 10 }),
       })
-      const data = await res.json() as { resultados?: DocResultado[]; error?: string }
+      const data = await res.json() as { resultados?: DocResultado[]; error?: string; queryExpandida?: string }
       if (!res.ok) { setErrorBusqueda(data.error ?? 'Error en búsqueda'); return }
       setResultados(data.resultados ?? [])
+      setQueryExpandida(data.queryExpandida)
+      const q = query.trim()
+      if (q) {
+        setHistorialBusquedas(prev => {
+          const nuevo = [q, ...prev.filter(h => h !== q)].slice(0, 8)
+          try { localStorage.setItem('smartlex_search_history', JSON.stringify(nuevo)) } catch {}
+          return nuevo
+        })
+      }
     } catch { setErrorBusqueda('Error de red') }
     finally { setBuscando(false) }
   }
@@ -370,8 +381,6 @@ export default function BuscarPage() {
     finally { setChateando(false) }
   }
 
-  const toggleFuentes = (idx: number) =>
-    setFuentesAbiertas(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s })
 
   return (
     <GestorLayout activeHref="/buscar">
@@ -411,6 +420,33 @@ export default function BuscarPage() {
             Buscar
           </button>
         </form>
+
+        {/* Historial de búsquedas */}
+        {historialBusquedas.length > 0 && !buscando && resultados === null && (
+          <div className="space-y-2">
+            <p className="text-xs text-white/25 px-1">Búsquedas recientes</p>
+            <div className="flex flex-wrap gap-2">
+              {historialBusquedas.map((h, i) => (
+                <button key={i} onClick={() => { setQuery(h); setTimeout(() => buscar(), 0) }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/80 hover:bg-white/[0.09] transition-all">
+                  {h}
+                </button>
+              ))}
+              <button onClick={() => { setHistorialBusquedas([]); try { localStorage.removeItem('smartlex_search_history') } catch {} }}
+                className="text-xs px-2 py-1.5 text-white/20 hover:text-white/50 transition-colors">
+                Limpiar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Query expandida badge */}
+        {queryExpandida && (
+          <div className="flex items-start gap-2 text-xs text-white/35 bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2">
+            <span className="text-sky-400/60 flex-shrink-0 mt-0.5">✦</span>
+            <span><span className="text-white/50">Búsqueda expandida con: </span>{queryExpandida}</span>
+          </div>
+        )}
 
         {/* Error búsqueda */}
         {errorBusqueda && (
@@ -461,9 +497,9 @@ export default function BuscarPage() {
                     </button>
                   </div>
 
-                  {doc.resumen && (
+                  {(doc.snippet || doc.resumen) && (
                     <p className="text-xs text-white/40 mt-3 line-clamp-2 leading-relaxed pl-[52px]">
-                      {doc.resumen}
+                      {doc.snippet ?? doc.resumen}
                     </p>
                   )}
                 </div>
@@ -503,38 +539,23 @@ export default function BuscarPage() {
                         <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{msg.texto}</p>
 
                         {(msg.fuentes?.length ?? 0) > 0 && (
-                          <div className="mt-3">
-                            <button
-                              onClick={() => toggleFuentes(idx)}
-                              className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors"
-                            >
-                              {fuentesAbiertas.has(idx) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                              {msg.fuentes!.length} fuente{msg.fuentes!.length !== 1 ? 's' : ''}
-                              {msg.confianza && (
-                                <span className={`ml-1 ${CONFIANZA_STYLE[msg.confianza] ?? ''}`}>
-                                  · confianza {msg.confianza.toLowerCase()}
-                                </span>
-                              )}
-                            </button>
-
-                            {fuentesAbiertas.has(idx) && (
-                              <div className="mt-2 space-y-1.5 border-t border-white/[0.06] pt-2">
-                                {msg.fuentes!.map((f, fi) => (
-                                  <div key={fi} className="flex items-start gap-2">
-                                    <FileText className="w-3 h-3 text-white/25 mt-0.5 flex-shrink-0" />
-                                    <div className="min-w-0">
-                                      <Link href={`/documentos/${f.id}`} className="text-xs text-sky-400 hover:text-sky-300 hover:underline truncate block transition-colors">
-                                        {f.nombre}
-                                      </Link>
-                                      {f.cita && <p className="text-xs text-white/30 italic mt-0.5">&ldquo;{f.cita}&rdquo;</p>}
-                                    </div>
-                                  </div>
-                                ))}
-                                {msg.docsConsultados !== undefined && (
-                                  <p className="text-xs text-white/25 mt-1">{msg.docsConsultados} documentos consultados</p>
-                                )}
-                              </div>
-                            )}
+                          <div className="mt-3 border-t border-white/[0.06] pt-2.5 space-y-1.5">
+                            <p className="text-[11px] text-white/25 mb-1.5">{msg.fuentes!.length} fuente{msg.fuentes!.length !== 1 ? 's' : ''}</p>
+                            {msg.fuentes!.map((f, fi) => (
+                              <button
+                                key={fi}
+                                onClick={() => setDocPreview({ id: f.id, nombre: f.nombre, tipo: 'OTRO', resumen: f.cita })}
+                                className="flex items-start gap-2 w-full text-left group/src"
+                              >
+                                <FileText className="w-3 h-3 text-white/25 mt-0.5 flex-shrink-0 group-hover/src:text-sky-400 transition-colors" />
+                                <div className="min-w-0">
+                                  <span className="text-xs text-sky-400 hover:text-sky-300 hover:underline truncate block transition-colors">
+                                    {f.nombre}
+                                  </span>
+                                  {f.cita && <p className="text-xs text-white/30 italic mt-0.5">&ldquo;{f.cita}&rdquo;</p>}
+                                </div>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>

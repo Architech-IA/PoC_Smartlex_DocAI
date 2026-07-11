@@ -7,6 +7,7 @@ let colaActiva: Promise<unknown> = Promise.resolve();
 export async function runSkill(skill: string, input: string): Promise<string> {
   const endpoint = skill === 'clasificar-documento' ? '/clasificar'
     : skill === 'generar-acta' ? '/generar-acta'
+    : skill === 'responder-pregunta' ? '/responder-pregunta'
     : null;
 
   if (!endpoint) throw new Error(`Skill no soportada en clasificador local: ${skill}`);

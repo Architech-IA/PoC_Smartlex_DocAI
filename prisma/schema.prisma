@@ -89,6 +89,7 @@ model Documento {
 
   eventos          EventoAuditoria[]
   gold             DocGold?                        // asignación a cliente (gold)
+  chunks          DocumentoChunk[]
 }
 
 // ── GOLD — documento asignado a un cliente ────────────────────────────────
@@ -135,4 +136,17 @@ model EventoAuditoria {
   actor       String?
   detalle     String?
   createdAt   DateTime   @default(now())
+}
+
+// ── CHUNKS — fragmentos de documento para búsqueda más precisa ────────────
+model DocumentoChunk {
+  id          String   @id @default(cuid())
+  documentoId String
+  documento   Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  indice      Int                              // posición del chunk (0, 1, 2…)
+  texto       String                           // fragmento de ~500 tokens
+  embedding   Unsupported("vector(1024)")?
+  createdAt   DateTime @default(now())
+
+  @@index([documentoId])
 }

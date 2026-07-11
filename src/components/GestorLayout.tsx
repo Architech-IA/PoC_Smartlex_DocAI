@@ -298,14 +298,43 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
           </div>
         </nav>
 
-        {/* Footer */}
-        {!isCol && (
-          <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
-            <p style={{ fontSize: '10px', color: 'rgba(100,116,139,0.5)', letterSpacing: '0.03em', textAlign: 'center' }}>
-              Smartlex DocAI © 2026
-            </p>
-          </div>
-        )}
+        {/* Footer con logout */}
+        <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+          {!isCol ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg style={{ width: 13, height: 13, color: '#f59e0b' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', margin: 0 }}>adminAT</p>
+                  <p style={{ fontSize: 9, color: 'rgba(100,116,139,0.5)', margin: 0 }}>Administrador</p>
+                </div>
+              </div>
+              <button
+                title="Cerrar sesión"
+                onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
+                style={{ padding: '5px 7px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              title="Cerrar sesión"
+              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
+              style={{ width: '100%', padding: '6px 0', borderRadius: 8, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.12)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          )}
+        </div>
       </>
     );
   }
