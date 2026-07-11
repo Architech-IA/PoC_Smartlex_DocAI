@@ -26,6 +26,7 @@ services:
       OLLAMA_MODEL: "qwen3-embedding:0.6b"
       OLLAMA_EMBEDDING_DIM: "1024"
       INGESTA_BASE_PATH: "/app/ingesta"
+      SILVER_BASE_PATH: "/app/procesados"
       OBSIDIAN_VAULT_PATH: "/app/vault"
       FS_EXPLORER_ROOTS: "/app/ingesta,/app/procesados,/app/vault,/app/gold"
       NOTION_TOKEN: ""
