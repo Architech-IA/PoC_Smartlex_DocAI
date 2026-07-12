@@ -17,11 +17,11 @@ export async function GET(req: NextRequest) {
   }
 
   const nombre = path.basename(filePath);
-  const dir = path.dirname(filePath);
 
-  // Get all DB records for this filename in this folder, ordered by creation date
+  // Busca por nombre sin filtrar por origenCarpeta — el archivo puede estar
+  // en BRONZE fisicamente pero su registro en DB apunta a SILVER
   const docs = await prisma.documento.findMany({
-    where: { nombre, origenCarpeta: dir },
+    where: { nombre },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -35,5 +35,5 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(docs);
+  return NextResponse.json(docs.map(d => ({ ...d, creadoEn: d.createdAt })));
 }
