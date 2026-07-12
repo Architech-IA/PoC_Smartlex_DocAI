@@ -72,7 +72,8 @@ const ROOT_LABELS: Record<string, string> = {
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
   LISTO:      { label: 'Indexado',   color: '#34d399', bg: 'rgba(52,211,153,0.12)',  icon: '✓' },
-  PROCESANDO: { label: 'Procesando', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  icon: '⏳' },
+  PROCESANDO: { label: "Procesando", color: "#fbbf24", bg: "rgba(251,191,36,0.12)",  icon: "⏳" },
+  EN_SILVER:  { label: "En SILVER",  color: "#818cf8", bg: "rgba(129,140,248,0.12)", icon: "→" },
   ERROR:      { label: 'Error',      color: '#f87171', bg: 'rgba(248,113,113,0.12)', icon: '✗' },
   ARCHIVADO:  { label: 'Archivado',  color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', icon: '📦' },
 };
