@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -71,11 +71,11 @@ const ROOT_LABELS: Record<string, string> = {
 };
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  LISTO:      { label: 'Indexado',   color: '#34d399', bg: 'rgba(52,211,153,0.12)',  icon: 'âœ“' },
-  PROCESANDO: { label: "Procesando", color: "#fbbf24", bg: "rgba(251,191,36,0.12)",  icon: "â³" },
-  EN_SILVER:  { label: "En SILVER",  color: "#818cf8", bg: "rgba(129,140,248,0.12)", icon: "â†’" },
-  ERROR:      { label: 'Error',      color: '#f87171', bg: 'rgba(248,113,113,0.12)', icon: 'âœ—' },
-  ARCHIVADO:  { label: 'Archivado',  color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', icon: 'ðŸ“¦' },
+  LISTO:      { label: 'Indexado',   color: '#34d399', bg: 'rgba(52,211,153,0.12)',  icon: '✓' },
+  PROCESANDO: { label: "Procesando", color: "#fbbf24", bg: "rgba(251,191,36,0.12)",  icon: "⏳" },
+  EN_SILVER:  { label: "En SILVER",  color: "#818cf8", bg: "rgba(129,140,248,0.12)", icon: "→" },
+  ERROR:      { label: 'Error',      color: '#f87171', bg: 'rgba(248,113,113,0.12)', icon: '✗' },
+  ARCHIVADO:  { label: 'Archivado',  color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', icon: '📦' },
 };
 
 const GLASS = {
@@ -90,18 +90,18 @@ const BRAND_L = '#fbbf24';
 const FONT = "'Inter', system-ui, sans-serif";
 
 function formatBytes(b: number | null) {
-  if (!b) return 'â€”';
+  if (!b) return '—';
   if (b < 1024) return b + ' B';
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
   return (b / (1024 * 1024)).toFixed(1) + ' MB';
 }
 function formatDate(iso: string | null) {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 function fileEmoji(ext: string | null) {
-  const m: Record<string, string> = { '.pdf': 'ðŸ“„', '.doc': 'ðŸ“', '.docx': 'ðŸ“', '.txt': 'ðŸ“ƒ', '.md': 'ðŸ“ƒ', '.png': 'ðŸ–¼ï¸', '.jpg': 'ðŸ–¼ï¸', '.csv': 'ðŸ“Š', '.json': 'ðŸ”§', '.zip': 'ðŸ—œï¸' };
-  return ext && m[ext] ? m[ext] : 'ðŸ“Ž';
+  const m: Record<string, string> = { '.pdf': '📄', '.doc': '📝', '.docx': '📝', '.txt': '📃', '.md': '📃', '.png': '🖼️', '.jpg': '🖼️', '.csv': '📊', '.json': '🔧', '.zip': '🗜️' };
+  return ext && m[ext] ? m[ext] : '📎';
 }
 
 function StatusChip({ status }: { status?: string }) {
@@ -121,7 +121,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="rounded-2xl overflow-hidden w-full max-w-md mx-4" style={{ ...GLASS, boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <p className="text-sm font-semibold text-white">{title}</p>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: 'rgba(148,163,184,0.7)', background: 'rgba(255,255,255,0.05)' }}>âœ•</button>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: 'rgba(148,163,184,0.7)', background: 'rgba(255,255,255,0.05)' }}>✕</button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -139,7 +139,7 @@ const AUDITORIA_CFG: Record<string, { label: string; dot: string; badge: string;
   ERROR_PROCESAMIENTO:  { label: 'ERROR',      dot: '#f87171', badge: 'rgba(226,75,74,0.15)',   text: '#f87171' },
   EXPORTAR:             { label: 'EXPORTAR',   dot: '#a78bfa', badge: 'rgba(129,140,248,0.15)', text: '#a78bfa' },
 };
-const AUDITORIA_DEFAULT = { label: 'ACCIÃ“N', dot: 'rgba(148,163,184,0.5)', badge: 'rgba(255,255,255,0.07)', text: '#94a3b8' };
+const AUDITORIA_DEFAULT = { label: 'ACCIÓN', dot: 'rgba(148,163,184,0.5)', badge: 'rgba(255,255,255,0.07)', text: '#94a3b8' };
 
 function fmtAuditDate(iso: string) {
   const d = new Date(iso);
@@ -158,7 +158,7 @@ function AuditoriaTimeline({ eventos, loading }: { eventos: AuditoriaEvento[]; l
   if (loading) return <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.6)' }}>Cargando...</p>;
   if (!eventos.length) return <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.5)' }}>Sin eventos registrados.</p>;
 
-  // Agrupar por dÃ­a
+  // Agrupar por día
   const grupos: { dia: string; items: AuditoriaEvento[] }[] = [];
   for (const ev of eventos) {
     const dia = fmtAuditDay(ev.createdAt);
@@ -171,7 +171,7 @@ function AuditoriaTimeline({ eventos, loading }: { eventos: AuditoriaEvento[]; l
     <div style={{ paddingTop: 4 }}>
       {grupos.map((grupo) => (
         <div key={grupo.dia} style={{ marginBottom: 16 }}>
-          {/* Separador de dÃ­a */}
+          {/* Separador de día */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.55)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{grupo.dia}</span>
             <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.05)' }} />
@@ -195,7 +195,7 @@ function AuditoriaTimeline({ eventos, loading }: { eventos: AuditoriaEvento[]; l
                       <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)' }}>{fmtAuditDate(ev.createdAt)}</span>
                       {ev.actor && (
                         <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '1px 7px' }}>
-                          {ev.actor === 'sistema' ? 'âš™ sistema' : `ðŸ‘¤ ${ev.actor}`}
+                          {ev.actor === 'sistema' ? '⚙ sistema' : `👤 ${ev.actor}`}
                         </span>
                       )}
                     </div>
@@ -210,6 +210,7 @@ function AuditoriaTimeline({ eventos, loading }: { eventos: AuditoriaEvento[]; l
   );
 }
 
+
 const TIPO_BADGE: Record<string, { bg: string; color: string }> = {
   CONTRATO:            { bg: 'rgba(55,138,221,0.15)',  color: '#60a5fa' },
   ACTA:                { bg: 'rgba(99,153,34,0.15)',   color: '#86efac' },
@@ -217,7 +218,7 @@ const TIPO_BADGE: Record<string, { bg: string; color: string }> = {
   DEMANDA:             { bg: 'rgba(226,75,74,0.15)',   color: '#f87171' },
   FORMATO:             { bg: 'rgba(245,158,11,0.15)',  color: '#fbbf24' },
   DOCUMENTACION_LEGAL: { bg: 'rgba(20,184,166,0.15)', color: '#5eead4' },
-  OTRO:                { bg: 'rgba(255,255,255,0.07)', color: '#94a3b8' },
+  OUTRO:               { bg: 'rgba(255,255,255,0.07)', color: '#94a3b8' },
 };
 const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
   LISTO:      { bg: 'rgba(52,211,153,0.12)',  color: '#6ee7b7' },
@@ -235,35 +236,32 @@ type DetalleDoc = {
 
 function DetallePanelContent({ doc, loading, compact = false }: { doc: DetalleDoc | null; loading: boolean; compact?: boolean }) {
   if (loading) return <p style={{ fontSize: 12, textAlign: 'center', marginTop: 32, color: 'rgba(100,116,139,0.6)' }}>Cargando...</p>;
-  if (!doc) return <p style={{ fontSize: 12, textAlign: 'center', marginTop: 32, color: 'rgba(100,116,139,0.5)' }}>No se pudo cargar la informaciÃ³n.</p>;
+  if (!doc) return <p style={{ fontSize: 12, textAlign: 'center', marginTop: 32, color: 'rgba(100,116,139,0.5)' }}>No se pudo cargar la información.</p>;
 
-  const tipoCfg = TIPO_BADGE[doc.tipo] ?? TIPO_BADGE.OTRO;
-  const estadoCfg = ESTADO_BADGE[doc.estado] ?? ESTADO_BADGE.OTRO;
+  const tipoCfg = TIPO_BADGE[doc.tipo] ?? { bg: 'rgba(255,255,255,0.07)', color: '#94a3b8' };
+  const estadoCfg = ESTADO_BADGE[doc.estado] ?? { bg: 'rgba(255,255,255,0.06)', color: '#94a3b8' };
 
   let datosObj: Record<string, unknown> | null = null;
   try { datosObj = doc.datosClave ? JSON.parse(doc.datosClave) as Record<string, unknown> : null; } catch { /* ignora */ }
 
   const fs = compact ? 11 : 12;
   const cardStyle = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: compact ? '8px 10px' : '10px 14px' };
-  const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(100,116,139,0.6)', marginBottom: 4, display: 'block' };
+  const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 600 as const, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'rgba(100,116,139,0.6)', marginBottom: 4, display: 'block' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Resumen IA */}
       {doc.resumen && (
         <div style={{ borderLeft: '2px solid rgba(245,158,11,0.5)', background: 'rgba(245,158,11,0.04)', borderRadius: '0 8px 8px 0', padding: compact ? '7px 10px' : '9px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fbbf24', display: 'inline-block', flexShrink: 0 }} />
-            <span style={labelStyle as React.CSSProperties}>Resumen IA</span>
+            <span style={labelStyle}>Resumen IA</span>
           </div>
           <p style={{ fontSize: fs, color: 'rgba(203,213,225,0.85)', lineHeight: 1.65, fontStyle: 'italic', margin: 0 }}>{doc.resumen}</p>
         </div>
       )}
-
-      {/* Datos clave como chips */}
       {datosObj && Object.keys(datosObj).length > 0 && (
         <div style={cardStyle}>
-          <span style={labelStyle as React.CSSProperties}>Datos clave</span>
+          <span style={labelStyle}>Datos clave</span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 2 }}>
             {Object.entries(datosObj).map(([k, v]) => (
               <div key={k} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, padding: '4px 7px', gridColumn: String(v).length > 20 ? 'span 2' : undefined }}>
@@ -274,18 +272,16 @@ function DetallePanelContent({ doc, loading, compact = false }: { doc: DetalleDo
           </div>
         </div>
       )}
-
-      {/* Metadatos en tabla compacta */}
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        {[
+        {([
           { k: 'Tipo',        v: <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: tipoCfg.bg, color: tipoCfg.color }}>{doc.tipo}</span> },
-          doc.area ? { k: 'Ãrea',   v: <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, background: 'rgba(129,140,248,0.1)', color: '#a78bfa' }}>{doc.area}</span> } : null,
+          doc.area ? { k: 'Área',   v: <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, background: 'rgba(129,140,248,0.1)', color: '#a78bfa' }}>{doc.area}</span> } : null,
           { k: 'Estado',      v: <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: estadoCfg.bg, color: estadoCfg.color }}>{doc.estado}</span> },
-          doc.tamanoBytes ? { k: 'TamaÃ±o', v: fmtB(doc.tamanoBytes) } : null,
+          doc.tamanoBytes ? { k: 'Tamaño', v: fmtB(doc.tamanoBytes) } : null,
           doc.creadoPor ? { k: 'Creado por', v: doc.creadoPor } : null,
           { k: 'Creado',      v: fmtD(doc.createdAt) },
           { k: 'Actualizado', v: fmtD(doc.updatedAt) },
-        ].filter(Boolean).map((row, i, arr) => (
+        ] as ({ k: string; v: React.ReactNode } | null)[]).filter(Boolean).map((row, i, arr) => (
           <div key={row!.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
             <span style={{ fontSize: fs - 1, color: 'rgba(100,116,139,0.55)' }}>{row!.k}</span>
             {typeof row!.v === 'string'
@@ -316,7 +312,7 @@ export default function ExploradorPage() {
   const [visorDoc, setVisorDoc] = useState<{ id: string; nombre: string; tipo: string } | null>(null);
   const [docFull, setDocFull] = useState<DocFull | null>(null);
   const [docFullLoading, setDocFullLoading] = useState(false);
-  // Gold â€” asignaciÃ³n a cliente
+  // Gold — asignación a cliente
   const [goldInfo, setGoldInfo] = useState<GoldInfo | null | 'none'>('none');
   const [goldClientes, setGoldClientes] = useState<ClienteOpt[]>([]);
   const [goldSugerencias, setGoldSugerencias] = useState<GoldSugerencia[]>([]);
@@ -481,7 +477,7 @@ export default function ExploradorPage() {
     if (res.ok) {
       const g = await res.json() as GoldInfo;
       setGoldInfo(g);
-      showToast('Asignado a cliente âœ“');
+      showToast('Asignado a cliente ✓');
     } else { showToast('Error al asignar', false); }
     setGoldSaving(false);
   };
@@ -554,14 +550,14 @@ export default function ExploradorPage() {
   const allSelected = filesOnly.length > 0 && selectedPaths.size === filesOnly.length;
   const toggleSelectAll = () => setSelectedPaths(allSelected ? new Set() : new Set(filesOnly.map(e => e.fullPath)));
 
-  // â”€â”€ Operations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Operations ──────────────────────────────────────────────────────────
 
   const doRename = async () => {
     if (!renameModal) return;
     const { entry, value } = renameModal;
     const res = await fetch('/api/fs/rename', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: entry.fullPath, newName: value }) });
     setRenameModal(null);
-    if (res.ok) { showToast(`âœ“ Renombrado a "${value}"`); await navigate(currentPath); }
+    if (res.ok) { showToast(`✓ Renombrado a "${value}"`); await navigate(currentPath); }
     else { const d = await res.json(); showToast('Error: ' + d.error, false); }
   };
 
@@ -574,7 +570,7 @@ export default function ExploradorPage() {
       const res = await fetch(`/api/fs/delete?path=${encodeURIComponent(e.fullPath)}`, { method: 'DELETE' });
       if (!res.ok) errors++;
     }
-    if (errors === 0) showToast(`âœ“ ${targets.length} elemento(s) eliminado(s)`);
+    if (errors === 0) showToast(`✓ ${targets.length} elemento(s) eliminado(s)`);
     else showToast(`${errors} error(es) al eliminar`, false);
     setSelectedPaths(new Set());
     setFocusedEntry(null);
@@ -590,7 +586,7 @@ export default function ExploradorPage() {
       const res = await fetch('/api/fs/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: e.fullPath, toDir: moveTarget }) });
       if (!res.ok) errors++;
     }
-    if (errors === 0) showToast(`âœ“ ${targets.length} elemento(s) movido(s)`);
+    if (errors === 0) showToast(`✓ ${targets.length} elemento(s) movido(s)`);
     else showToast(`${errors} error(es) al mover`, false);
     setSelectedPaths(new Set());
     setFocusedEntry(null);
@@ -608,7 +604,7 @@ export default function ExploradorPage() {
       form.append('origenCarpeta', entry.fullPath.substring(0, entry.fullPath.lastIndexOf('/')));
       const res = await fetch('/api/documentos', { method: 'POST', body: form });
       if (res.ok) {
-        showToast('âœ“ Procesado y registrado en el gestor');
+        showToast('✓ Procesado y registrado en el gestor');
         setStatusMap(prev => ({ ...prev, [entry.name]: { estado: 'PROCESANDO', id: '' } }));
       } else {
         const err = await res.json();
@@ -633,7 +629,7 @@ export default function ExploradorPage() {
       files.forEach(f => form.append('file', f));
       const res = await fetch(`/api/fs/upload?dir=${encodeURIComponent(currentPath)}`, { method: 'POST', body: form });
       const data = await res.json();
-      if (res.ok) { showToast(`âœ“ ${data.uploaded.length} archivo(s) subido(s)`); await navigate(currentPath); }
+      if (res.ok) { showToast(`✓ ${data.uploaded.length} archivo(s) subido(s)`); await navigate(currentPath); }
       else showToast('Error: ' + (data.error ?? 'desconocido'), false);
     } catch { showToast('Error al subir', false); }
     finally { setUploading(false); }
@@ -664,7 +660,7 @@ export default function ExploradorPage() {
 
   const SortIcon = ({ field }: { field: SortField }) => (
     <span style={{ color: sortField === field ? BRAND_L : 'rgba(100,116,139,0.4)', fontSize: 9, marginLeft: 2 }}>
-      {sortField === field ? (sortDir === 'asc' ? 'â–²' : 'â–¼') : 'â‡…'}
+      {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
     </span>
   );
 
@@ -675,33 +671,33 @@ export default function ExploradorPage() {
       <div className="flex flex-col h-full gap-3" style={{ fontFamily: FONT }}
         onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
 
-        {/* â”€â”€ Drag overlay â”€â”€ */}
+        {/* ── Drag overlay ── */}
         {dragging && (
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ background: 'rgba(4,4,14,0.75)', backdropFilter: 'blur(4px)' }}>
             <div className="flex flex-col items-center gap-3 p-10 rounded-3xl" style={{ border: `2px dashed ${BRAND}`, background: 'rgba(245,158,11,0.08)' }}>
-              <span style={{ fontSize: 48 }}>ðŸ“‚</span>
+              <span style={{ fontSize: 48 }}>📂</span>
               <p style={{ color: BRAND_L, fontSize: 16, fontWeight: 600 }}>Soltar para subir a esta carpeta</p>
             </div>
           </div>
         )}
 
-        {/* â”€â”€ Toast â”€â”€ */}
+        {/* ── Toast ── */}
         {toast && (
           <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl text-sm font-medium shadow-xl" style={{ background: toast.ok ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)', border: `1px solid ${toast.ok ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`, color: toast.ok ? '#34d399' : '#f87171', backdropFilter: 'blur(12px)' }}>
             {toast.msg}
           </div>
         )}
 
-        {/* â”€â”€ Context menu â”€â”€ */}
+        {/* ── Context menu ── */}
         {ctxMenu && (
           <div ref={ctxRef} className="fixed z-50 rounded-xl overflow-hidden py-1" style={{ top: ctxMenu.y, left: ctxMenu.x, ...GLASS, minWidth: 190, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
             {[
-              { label: 'â†“ Descargar',          fn: () => { window.location.href = `/api/fs/download?path=${encodeURIComponent(ctxMenu.entry.fullPath)}`; setCtxMenu(null); } },
-              { label: 'â¤´ Procesar en gestor', fn: () => { importar(ctxMenu.entry); setCtxMenu(null); }, hide: !IMPORTABLE.has(ctxMenu.entry.ext ?? '') },
-              { label: 'âœŽ Renombrar',          fn: () => { setRenameModal({ entry: ctxMenu.entry, value: ctxMenu.entry.name }); setCtxMenu(null); } },
-              { label: 'â†’ Mover',              fn: () => { openMoveModal([ctxMenu.entry]); setCtxMenu(null); } },
-              { label: 'âŽ˜ Copiar ruta',        fn: () => { navigator.clipboard.writeText(ctxMenu.entry.fullPath).catch(() => {}); setCtxMenu(null); showToast('âœ“ Ruta copiada'); } },
-              { label: 'ðŸ—‘ Eliminar',           fn: () => { setDeleteModal([ctxMenu.entry]); setCtxMenu(null); }, danger: true },
+              { label: '↓ Descargar',          fn: () => { window.location.href = `/api/fs/download?path=${encodeURIComponent(ctxMenu.entry.fullPath)}`; setCtxMenu(null); } },
+              { label: '⤴ Procesar en gestor', fn: () => { importar(ctxMenu.entry); setCtxMenu(null); }, hide: !IMPORTABLE.has(ctxMenu.entry.ext ?? '') },
+              { label: '✎ Renombrar',          fn: () => { setRenameModal({ entry: ctxMenu.entry, value: ctxMenu.entry.name }); setCtxMenu(null); } },
+              { label: '→ Mover',              fn: () => { openMoveModal([ctxMenu.entry]); setCtxMenu(null); } },
+              { label: '⎘ Copiar ruta',        fn: () => { navigator.clipboard.writeText(ctxMenu.entry.fullPath).catch(() => {}); setCtxMenu(null); showToast('✓ Ruta copiada'); } },
+              { label: '🗑 Eliminar',           fn: () => { setDeleteModal([ctxMenu.entry]); setCtxMenu(null); }, danger: true },
             ].filter(i => !i.hide).map((item, i) => (
               <button key={i} onClick={item.fn} className="w-full text-left px-4 py-2 transition-all" style={{ fontSize: 13, color: item.danger ? '#f87171' : '#cbd5e1' }}
                 onMouseEnter={e => (e.currentTarget.style.background = item.danger ? 'rgba(248,113,113,0.1)' : 'rgba(255,255,255,0.07)') }
@@ -712,7 +708,7 @@ export default function ExploradorPage() {
           </div>
         )}
 
-        {/* â”€â”€ Rename Modal â”€â”€ */}
+        {/* ── Rename Modal ── */}
         {renameModal && (
           <Modal title="Renombrar" onClose={() => setRenameModal(null)}>
             <p className="text-xs mb-3" style={{ color: 'rgba(148,163,184,0.7)' }}>Nuevo nombre para <span style={{ color: BRAND_L }}>{renameModal.entry.name}</span></p>
@@ -731,11 +727,11 @@ export default function ExploradorPage() {
           </Modal>
         )}
 
-        {/* â”€â”€ Delete Modal â”€â”€ */}
+        {/* ── Delete Modal ── */}
         {deleteModal && (
-          <Modal title="Confirmar eliminaciÃ³n" onClose={() => setDeleteModal(null)}>
-            <p className="text-sm mb-2" style={{ color: '#e2e8f0' }}>Â¿Eliminar {deleteModal.length === 1 ? `"${deleteModal[0].name}"` : `${deleteModal.length} elementos`}?</p>
-            <p className="text-xs mb-5" style={{ color: 'rgba(248,113,113,0.8)' }}>Esta acciÃ³n no se puede deshacer.</p>
+          <Modal title="Confirmar eliminación" onClose={() => setDeleteModal(null)}>
+            <p className="text-sm mb-2" style={{ color: '#e2e8f0' }}>¿Eliminar {deleteModal.length === 1 ? `"${deleteModal[0].name}"` : `${deleteModal.length} elementos`}?</p>
+            <p className="text-xs mb-5" style={{ color: 'rgba(248,113,113,0.8)' }}>Esta acción no se puede deshacer.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteModal(null)} className="px-4 py-2 rounded-lg text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(148,163,184,0.8)' }}>Cancelar</button>
               <button onClick={doDelete} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(248,113,113,0.2)', border: '1px solid rgba(248,113,113,0.4)', color: '#f87171' }}>Eliminar</button>
@@ -743,29 +739,29 @@ export default function ExploradorPage() {
           </Modal>
         )}
 
-        {/* â”€â”€ Move Modal â”€â”€ */}
+        {/* ── Move Modal ── */}
         {moveModal && (
           <Modal title={`Mover ${moveModal.length === 1 ? `"${moveModal[0].name}"` : `${moveModal.length} elementos`}`} onClose={() => setMoveModal(null)}>
-            <p className="text-xs mb-3" style={{ color: 'rgba(148,163,184,0.6)' }}>SeleccionÃ¡ el directorio destino</p>
+            <p className="text-xs mb-3" style={{ color: 'rgba(148,163,184,0.6)' }}>Seleccioná el directorio destino</p>
             <div className="rounded-xl overflow-hidden mb-4" style={{ border: '1px solid rgba(255,255,255,0.08)', maxHeight: 200, overflowY: 'auto' }}>
               {Object.entries(ROOT_LABELS).map(([path, label]) => (
                 <button key={path} onClick={() => setMoveTarget(path)} className="w-full text-left px-4 py-2.5 flex items-center gap-2 transition-all"
                   style={{ background: moveTarget === path ? 'rgba(245,158,11,0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.04)', color: moveTarget === path ? BRAND_L : '#cbd5e1', fontSize: 13 }}
                   onMouseEnter={e => { if (moveTarget !== path) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                   onMouseLeave={e => { if (moveTarget !== path) e.currentTarget.style.background = 'transparent'; }}>
-                  <span>ðŸ“</span> {label}
-                  {moveTarget === path && <span className="ml-auto" style={{ color: BRAND }}>âœ“</span>}
+                  <span>📁</span> {label}
+                  {moveTarget === path && <span className="ml-auto" style={{ color: BRAND }}>✓</span>}
                 </button>
               ))}
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setMoveModal(null)} className="px-4 py-2 rounded-lg text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(148,163,184,0.8)' }}>Cancelar</button>
-              <button onClick={doMove} disabled={!moveTarget} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: BRAND_L, opacity: moveTarget ? 1 : 0.5 }}>Mover aquÃ­</button>
+              <button onClick={doMove} disabled={!moveTarget} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: BRAND_L, opacity: moveTarget ? 1 : 0.5 }}>Mover aquí</button>
             </div>
           </Modal>
         )}
 
-        {/* â”€â”€ Header â”€â”€ */}
+        {/* ── Header ── */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -781,7 +777,7 @@ export default function ExploradorPage() {
           </div>
           <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
             {(['list', 'grid', 'compact'] as ViewMode[]).map(mode => {
-              const icons: Record<ViewMode, string> = { list: 'â˜°', grid: 'âŠž', compact: 'â‰¡' };
+              const icons: Record<ViewMode, string> = { list: '☰', grid: '⊞', compact: '≡' };
               return (
                 <button key={mode} onClick={() => setViewMode(mode)} title={mode}
                   className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
@@ -793,10 +789,10 @@ export default function ExploradorPage() {
           </div>
         </div>
 
-        {/* â”€â”€ Breadcrumb + Search â”€â”€ */}
+        {/* ── Breadcrumb + Search ── */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 flex-1 flex-wrap" style={{ fontSize: 12 }}>
-            <button onClick={() => navigate('')} style={{ color: breadcrumb.length === 0 ? BRAND_L : 'rgba(148,163,184,0.8)', fontWeight: 500 }}>RaÃ­z</button>
+            <button onClick={() => navigate('')} style={{ color: breadcrumb.length === 0 ? BRAND_L : 'rgba(148,163,184,0.8)', fontWeight: 500 }}>Raíz</button>
             {breadcrumb.map((crumb, i) => (
               <span key={crumb.path} className="flex items-center gap-1">
                 <span style={{ color: 'rgba(100,116,139,0.5)' }}>/</span>
@@ -816,16 +812,16 @@ export default function ExploradorPage() {
           </div>
         </div>
 
-        {/* â”€â”€ Bulk action bar â”€â”€ */}
+        {/* ── Bulk action bar ── */}
         {selectedPaths.size > 0 && (
           <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}>
             <span style={{ color: BRAND_L, fontSize: 12, fontWeight: 600 }}>{selectedPaths.size} seleccionado(s)</span>
             <div className="flex gap-2 ml-auto flex-wrap">
               {[
-                { label: 'â†“ Descargar', fn: () => selectedEntries.forEach(e => { window.location.href = `/api/fs/download?path=${encodeURIComponent(e.fullPath)}`; }), color: BRAND_L, bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' },
-                { label: 'â¤´ Procesar', fn: () => selectedEntries.filter(e => IMPORTABLE.has(e.ext ?? '')).forEach(e => importar(e)), color: '#34d399', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)' },
-                { label: 'â†’ Mover', fn: () => openMoveModal(selectedEntries), color: '#818cf8', bg: 'rgba(129,140,248,0.12)', border: 'rgba(129,140,248,0.25)' },
-                { label: 'ðŸ—‘ Eliminar', fn: () => setDeleteModal(selectedEntries), color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.25)' },
+                { label: '↓ Descargar', fn: () => selectedEntries.forEach(e => { window.location.href = `/api/fs/download?path=${encodeURIComponent(e.fullPath)}`; }), color: BRAND_L, bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' },
+                { label: '⤴ Procesar', fn: () => selectedEntries.filter(e => IMPORTABLE.has(e.ext ?? '')).forEach(e => importar(e)), color: '#34d399', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)' },
+                { label: '→ Mover', fn: () => openMoveModal(selectedEntries), color: '#818cf8', bg: 'rgba(129,140,248,0.12)', border: 'rgba(129,140,248,0.25)' },
+                { label: '🗑 Eliminar', fn: () => setDeleteModal(selectedEntries), color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.25)' },
               ].map((btn, i) => (
                 <button key={i} onClick={btn.fn} className="px-3 py-1.5 rounded-lg text-xs font-medium"
                   style={{ background: btn.bg, border: `1px solid ${btn.border}`, color: btn.color }}>
@@ -837,25 +833,25 @@ export default function ExploradorPage() {
           </div>
         )}
 
-        {/* â”€â”€ Main panel â”€â”€ */}
+        {/* ── Main panel ── */}
         <div className="flex gap-4 flex-1 min-h-0">
 
           {/* File panel */}
           <div className="flex flex-col flex-1 min-w-0 rounded-2xl overflow-hidden" style={GLASS}>
 
-            {/* â”€â”€ LIST â”€â”€ */}
+            {/* ── LIST ── */}
             {viewMode === 'list' && (
               <>
                 <div className="grid px-4 py-2" style={{ gridTemplateColumns: '20px 1fr 80px 140px 90px', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(100,116,139,0.7)' }}>
                   <label className="flex items-center"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-3 h-3 accent-amber-400" /></label>
                   <button className="text-left flex items-center gap-1" onClick={() => handleSort('name')}>Nombre <SortIcon field="name" /></button>
-                  <button className="text-right flex items-center justify-end gap-1" onClick={() => handleSort('size')}>TamaÃ±o <SortIcon field="size" /></button>
+                  <button className="text-right flex items-center justify-end gap-1" onClick={() => handleSort('size')}>Tamaño <SortIcon field="size" /></button>
                   <button className="text-right flex items-center justify-end gap-1" onClick={() => handleSort('modified')}>Modificado <SortIcon field="modified" /></button>
                   <button className="text-right flex items-center justify-end gap-1" onClick={() => handleSort('type')}>Tipo <SortIcon field="type" /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   {loading ? <div className="flex items-center justify-center h-32" style={{ color: 'rgba(100,116,139,0.6)', fontSize: 13 }}>Cargando...</div>
-                    : filtered.length === 0 ? <div className="flex items-center justify-center h-32" style={{ color: 'rgba(100,116,139,0.6)', fontSize: 13 }}>{search ? `Sin resultados para "${search}"` : 'Carpeta vacÃ­a â€” arrastrÃ¡ archivos aquÃ­'}</div>
+                    : filtered.length === 0 ? <div className="flex items-center justify-center h-32" style={{ color: 'rgba(100,116,139,0.6)', fontSize: 13 }}>{search ? `Sin resultados para "${search}"` : 'Carpeta vacía — arrastrá archivos aquí'}</div>
                     : filtered.map(entry => {
                       const isActive = focusedEntry?.fullPath === entry.fullPath;
                       const isChecked = selectedPaths.has(entry.fullPath);
@@ -868,11 +864,11 @@ export default function ExploradorPage() {
                             {entry.type === 'file' && <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(entry.fullPath)} className="w-3 h-3 accent-amber-400" />}
                           </label>
                           <span className="flex items-center gap-2 min-w-0">
-                            <span style={{ fontSize: 14, flexShrink: 0 }}>{entry.type === 'dir' ? 'ðŸ“' : fileEmoji(entry.ext)}</span>
+                            <span style={{ fontSize: 14, flexShrink: 0 }}>{entry.type === 'dir' ? '📁' : fileEmoji(entry.ext)}</span>
                             <span className="truncate" style={{ fontSize: 13, color: isActive ? BRAND_L : entry.type === 'dir' ? '#e2e8f0' : '#cbd5e1', fontWeight: entry.type === 'dir' ? 500 : 400 }}>{ROOT_LABELS[`/app/${entry.name}`] ?? entry.name}</span>
                             {entry.type === 'file' && <StatusChip status={status} />}
                           </span>
-                          <span className="text-right" style={{ fontSize: 11, color: 'rgba(100,116,139,0.7)' }}>{entry.type === 'file' ? formatBytes(entry.sizeBytes) : 'â€”'}</span>
+                          <span className="text-right" style={{ fontSize: 11, color: 'rgba(100,116,139,0.7)' }}>{entry.type === 'file' ? formatBytes(entry.sizeBytes) : '—'}</span>
                           <span className="text-right" style={{ fontSize: 11, color: 'rgba(100,116,139,0.6)' }}>{formatDate(entry.modifiedAt)}</span>
                           <span className="text-right" style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)', letterSpacing: '0.04em' }}>{entry.ext?.toUpperCase().slice(1) ?? 'DIR'}</span>
                         </div>
@@ -882,7 +878,7 @@ export default function ExploradorPage() {
               </>
             )}
 
-            {/* â”€â”€ GRID â”€â”€ */}
+            {/* ── GRID ── */}
             {viewMode === 'grid' && (
               <div className="flex-1 overflow-y-auto p-4">
                 {loading ? <div className="flex items-center justify-center h-32" style={{ color: 'rgba(100,116,139,0.6)', fontSize: 13 }}>Cargando...</div>
@@ -896,7 +892,7 @@ export default function ExploradorPage() {
                           onClick={() => entry.type === 'dir' ? navigate(entry.fullPath) : openFile(entry)}
                           onContextMenu={e => { if (entry.type === 'file') { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, entry }); } }}>
                           {entry.type === 'file' && <label onClick={e => e.stopPropagation()} className="absolute top-2 left-2"><input type="checkbox" checked={isChecked} onChange={() => toggleSelect(entry.fullPath)} className="w-3 h-3 accent-amber-400" /></label>}
-                          <span style={{ fontSize: 34 }}>{entry.type === 'dir' ? 'ðŸ“' : fileEmoji(entry.ext)}</span>
+                          <span style={{ fontSize: 34 }}>{entry.type === 'dir' ? '📁' : fileEmoji(entry.ext)}</span>
                           <span className="text-center w-full truncate" style={{ fontSize: 11, color: isActive ? BRAND_L : '#cbd5e1' }}>{ROOT_LABELS[`/app/${entry.name}`] ?? entry.name}</span>
                           {entry.type === 'file' && <StatusChip status={statusMap[entry.name]?.estado} />}
                           <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)' }}>{entry.type === 'file' ? formatBytes(entry.sizeBytes) : ''}</span>
@@ -907,7 +903,7 @@ export default function ExploradorPage() {
               </div>
             )}
 
-            {/* â”€â”€ COMPACT â”€â”€ */}
+            {/* ── COMPACT ── */}
             {viewMode === 'compact' && (
               <div className="flex-1 overflow-y-auto">
                 {loading ? <div className="flex items-center justify-center h-32" style={{ color: 'rgba(100,116,139,0.6)', fontSize: 13 }}>Cargando...</div>
@@ -920,7 +916,7 @@ export default function ExploradorPage() {
                         onClick={() => entry.type === 'dir' ? navigate(entry.fullPath) : openFile(entry)}
                         onContextMenu={e => { if (entry.type === 'file') { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, entry }); } }}>
                         {entry.type === 'file' && <label onClick={e => e.stopPropagation()}><input type="checkbox" checked={isChecked} onChange={() => toggleSelect(entry.fullPath)} className="w-3 h-3 accent-amber-400" /></label>}
-                        <span style={{ fontSize: 13 }}>{entry.type === 'dir' ? 'ðŸ“' : fileEmoji(entry.ext)}</span>
+                        <span style={{ fontSize: 13 }}>{entry.type === 'dir' ? '📁' : fileEmoji(entry.ext)}</span>
                         <span className="flex-1 truncate" style={{ fontSize: 12, color: isActive ? BRAND_L : '#cbd5e1' }}>{ROOT_LABELS[`/app/${entry.name}`] ?? entry.name}</span>
                         {entry.type === 'file' && <StatusChip status={statusMap[entry.name]?.estado} />}
                         <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)', flexShrink: 0 }}>{entry.type === 'file' ? formatBytes(entry.sizeBytes) : ''}</span>
@@ -933,12 +929,12 @@ export default function ExploradorPage() {
 
             {/* Status bar */}
             <div className="flex items-center justify-between px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: 'rgba(100,116,139,0.6)' }}>
-              <span>{filtered.length} elemento(s){search && ` Â· "${search}"`}</span>
-              {uploading ? <span style={{ color: BRAND_L }}>â³ Subiendo...</span> : currentPath ? <span>ArrastrÃ¡ archivos aquÃ­ para subirlos</span> : null}
+              <span>{filtered.length} elemento(s){search && ` · "${search}"`}</span>
+              {uploading ? <span style={{ color: BRAND_L }}>⏳ Subiendo...</span> : currentPath ? <span>Arrastrá archivos aquí para subirlos</span> : null}
             </div>
           </div>
 
-          {/* â”€â”€ Detail drawer â”€â”€ */}
+          {/* ── Detail drawer ── */}
           {focusedEntry && focusedEntry.type === 'file' && (
             <div className="flex flex-col rounded-2xl overflow-hidden flex-shrink-0" style={{ ...GLASS, width: 300 }}>
               {/* File summary */}
@@ -955,30 +951,30 @@ export default function ExploradorPage() {
                 {/* Quick actions */}
                 <div className="flex gap-2">
                   <button onClick={() => window.location.href = `/api/fs/download?path=${encodeURIComponent(focusedEntry.fullPath)}`}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: BRAND_L }}>â†“ Descargar</button>
+                    className="flex-1 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: BRAND_L }}>↓ Descargar</button>
                   <button onClick={() => setRenameModal({ entry: focusedEntry, value: focusedEntry.name })}
-                    className="py-1.5 px-3 rounded-lg text-xs font-medium" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(203,213,225,0.8)' }}>âœŽ</button>
+                    className="py-1.5 px-3 rounded-lg text-xs font-medium" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(203,213,225,0.8)' }}>✎</button>
                   <button onClick={() => setDeleteModal([focusedEntry])}
-                    className="py-1.5 px-3 rounded-lg text-xs font-medium" style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171' }}>ðŸ—‘</button>
+                    className="py-1.5 px-3 rounded-lg text-xs font-medium" style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171' }}>🗑</button>
                 </div>
-                {/* Abrir en visor â€” solo si el doc estÃ¡ indexado en la DB */}
+                {/* Abrir en visor — solo si el doc está indexado en la DB */}
                 {statusMap[focusedEntry.name]?.id && (
                   <button
                     onClick={() => setVisorDoc({ id: statusMap[focusedEntry.name].id, nombre: focusedEntry.name, tipo: '' })}
                     className="w-full py-1.5 rounded-lg text-xs font-medium mt-2"
                     style={{ background: 'rgba(14,165,233,0.12)', border: '1px solid rgba(14,165,233,0.25)', color: '#38bdf8' }}>
-                    ðŸ‘ Abrir documento
+                    👁 Abrir documento
                   </button>
                 )}
-                {/* ðŸ¥‡ AsignaciÃ³n gold â€” solo en Procesados con doc indexado */}
+                {/* 🥇 Asignación gold — solo en Procesados con doc indexado */}
                 {currentPath.includes('procesados') && statusMap[focusedEntry.name]?.id && (
                   <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
                     <div className="flex items-center justify-between mb-2">
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>ðŸ¥‡ Cliente</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>🥇 Cliente</span>
                       {goldInfo === 'none' && (
                         <button onClick={() => loadGold(statusMap[focusedEntry.name].id)}
                           style={{ fontSize: 10, color: 'rgba(245,158,11,0.7)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                          Cargar â†“
+                          Cargar ↓
                         </button>
                       )}
                     </div>
@@ -986,7 +982,7 @@ export default function ExploradorPage() {
                     {!goldLoading && goldInfo !== 'none' && (
                       <>
                         {goldInfo && (
-                          <p className="mb-2" style={{ fontSize: 11, color: '#34d399' }}>âœ“ {goldInfo.cliente.nombre}</p>
+                          <p className="mb-2" style={{ fontSize: 11, color: '#34d399' }}>✓ {goldInfo.cliente.nombre}</p>
                         )}
                         {!goldInfo && goldSugerencias.length > 0 && (
                           <div className="mb-2">
@@ -1012,7 +1008,7 @@ export default function ExploradorPage() {
                           <button onClick={() => { setGoldNuevoForm(v => !v); setGoldNuevoNombre(''); setGoldNuevoNit(''); }}
                             className="px-2 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
                             style={{ background: goldNuevoForm ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)', border: `1px solid ${goldNuevoForm ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.1)'}`, color: goldNuevoForm ? '#fbbf24' : '#94a3b8' }}>
-                            {goldNuevoForm ? 'âœ•' : '+ Nuevo'}
+                            {goldNuevoForm ? '✕' : '+ Nuevo'}
                           </button>
                         </div>
                         {goldNuevoForm && (
@@ -1044,7 +1040,7 @@ export default function ExploradorPage() {
                               disabled={!goldNuevoNombre.trim() || goldCreando}
                               className="w-full py-1.5 rounded text-xs font-semibold"
                               style={{ background: goldNuevoNombre.trim() ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${goldNuevoNombre.trim() ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.06)'}`, color: goldNuevoNombre.trim() ? '#34d399' : '#475569', cursor: goldNuevoNombre.trim() ? 'pointer' : 'not-allowed' }}>
-                              {goldCreando ? 'Creando...' : 'âœ“ Crear y seleccionar'}
+                              {goldCreando ? 'Creando...' : '✓ Crear y seleccionar'}
                             </button>
                           </div>
                         )}
@@ -1062,14 +1058,14 @@ export default function ExploradorPage() {
                               <button onClick={() => { setGoldNuevoExpForm(v => !v); setGoldNuevoExpNombre(''); setGoldNuevoExpCodigo(''); }}
                                 className="px-2 py-1.5 rounded text-xs font-semibold flex-shrink-0"
                                 style={{ background: goldNuevoExpForm ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.06)', border: `1px solid ${goldNuevoExpForm ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.1)'}`, color: goldNuevoExpForm ? '#818cf8' : '#94a3b8' }}>
-                                {goldNuevoExpForm ? 'âœ•' : '+ Exp'}
+                                {goldNuevoExpForm ? '✕' : '+ Exp'}
                               </button>
                             </div>
                             {goldNuevoExpForm && (
                               <div className="rounded-lg p-2 mt-1.5 flex flex-col gap-1.5" style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
                                 <div className="flex gap-1.5">
                                   <input value={goldNuevoExpCodigo} onChange={e => setGoldNuevoExpCodigo(e.target.value)}
-                                    placeholder="CÃ³digo (ej. EXP-001)" className="rounded px-2 py-1.5 text-xs"
+                                    placeholder="Código (ej. EXP-001)" className="rounded px-2 py-1.5 text-xs"
                                     style={{ width: 110, background: 'rgba(15,15,30,0.9)', border: '1px solid rgba(255,255,255,0.1)', color: '#f1f5f9', flexShrink: 0 }} />
                                   <input autoFocus value={goldNuevoExpNombre} onChange={e => setGoldNuevoExpNombre(e.target.value)}
                                     placeholder="Nombre del expediente *" className="flex-1 rounded px-2 py-1.5 text-xs min-w-0"
@@ -1078,7 +1074,7 @@ export default function ExploradorPage() {
                                 <button onClick={crearExpedienteGold} disabled={!goldNuevoExpNombre.trim() || goldCreandoExp}
                                   className="w-full py-1.5 rounded text-xs font-semibold"
                                   style={{ background: goldNuevoExpNombre.trim() ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${goldNuevoExpNombre.trim() ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.06)'}`, color: goldNuevoExpNombre.trim() ? '#818cf8' : '#475569', cursor: goldNuevoExpNombre.trim() ? 'pointer' : 'not-allowed' }}>
-                                  {goldCreandoExp ? 'Creando...' : 'âœ“ Crear expediente'}
+                                  {goldCreandoExp ? 'Creando...' : '✓ Crear expediente'}
                                 </button>
                               </div>
                             )}
@@ -1091,18 +1087,18 @@ export default function ExploradorPage() {
                             border: `1px solid ${goldClienteId ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.06)'}`,
                             color: goldClienteId ? '#fbbf24' : '#475569',
                             cursor: goldClienteId && !goldSaving ? 'pointer' : 'not-allowed' }}>
-                          {goldSaving ? 'Guardando...' : goldInfo ? 'â†º Reasignar' : 'ðŸ¥‡ Asignar a cliente'}
+                          {goldSaving ? 'Guardando...' : goldInfo ? '↺ Reasignar' : '🥇 Asignar a cliente'}
                         </button>
                       </>
                     )}
                   </div>
                 )}
 
-                {/* Procesar en gestor â€” oculto si ya estÃ¡ en carpeta Procesados */}
+                {/* Procesar en gestor — oculto si ya está en carpeta Procesados */}
                 {IMPORTABLE.has(focusedEntry.ext ?? '') && currentPath.includes('ingesta') && (
                   <button onClick={() => importar(focusedEntry)} disabled={importing} className="w-full py-1.5 rounded-lg text-xs font-medium mt-2"
                     style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399', opacity: importing ? 0.6 : 1 }}>
-                    {importing ? 'Procesando...' : 'â¤´ Procesar en gestor'}
+                    {importing ? 'Procesando...' : '⤴ Procesar en gestor'}
                   </button>
                 )}
               </div>
@@ -1110,7 +1106,7 @@ export default function ExploradorPage() {
               {/* Tabs */}
               {(() => {
                 const extraTabs: [DetailTab, string][] = currentPath.includes('procesados') && statusMap[focusedEntry.name]?.id
-                  ? [['detalle', 'Detalle'], ['auditoria', 'AuditorÃ­a']]
+                  ? [['detalle', 'Detalle'], ['auditoria', 'Auditoría']]
                   : [];
                 const allTabs: [DetailTab, string][] = [['info', 'Info'], ['preview', 'Preview'], ['versions', 'Versiones'], ...extraTabs];
                 return (
@@ -1140,8 +1136,8 @@ export default function ExploradorPage() {
                   <div className="flex flex-col gap-2">
                     {[
                       ['Nombre', focusedEntry.name],
-                      ['ExtensiÃ³n', focusedEntry.ext?.toUpperCase() ?? 'â€”'],
-                      ['TamaÃ±o', formatBytes(focusedEntry.sizeBytes)],
+                      ['Extensión', focusedEntry.ext?.toUpperCase() ?? '—'],
+                      ['Tamaño', formatBytes(focusedEntry.sizeBytes)],
                       ['Modificado', formatDate(focusedEntry.modifiedAt)],
                       ['Ruta', focusedEntry.fullPath],
                       ['Estado', statusMap[focusedEntry.name]?.estado ? STATUS_CFG[statusMap[focusedEntry.name]?.estado]?.label ?? statusMap[focusedEntry.name]?.estado : 'No indexado'],
@@ -1152,7 +1148,7 @@ export default function ExploradorPage() {
                       </div>
                     ))}
                     <button onClick={() => openMoveModal([focusedEntry])} className="w-full py-2 rounded-lg text-xs font-medium mt-1"
-                      style={{ background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.2)', color: '#818cf8' }}>â†’ Mover a otra carpeta</button>
+                      style={{ background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.2)', color: '#818cf8' }}>→ Mover a otra carpeta</button>
                   </div>
                 )}
 
@@ -1167,7 +1163,7 @@ export default function ExploradorPage() {
                       <iframe src={`data:application/pdf;base64,${preview.base64}`} className="w-full rounded-lg" style={{ height: 400, border: 'none' }} title={focusedEntry.name} />
                     )}
                     {!previewLoading && !preview && docFull?.textoExtraido && (
-                      <pre className="text-xs whitespace-pre-wrap break-words" style={{ color: 'rgba(203,213,225,0.85)', fontFamily: 'monospace', lineHeight: 1.6 }}>{docFull.textoExtraido.slice(0, 8000)}{docFull.textoExtraido.length > 8000 ? '\n\n[â€¦texto truncado]' : ''}</pre>
+                      <pre className="text-xs whitespace-pre-wrap break-words" style={{ color: 'rgba(203,213,225,0.85)', fontFamily: 'monospace', lineHeight: 1.6 }}>{docFull.textoExtraido.slice(0, 8000)}{docFull.textoExtraido.length > 8000 ? '\n\n[…texto truncado]' : ''}</pre>
                     )}
                     {!previewLoading && !preview && !docFull?.textoExtraido && (
                       <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.5)' }}>Vista previa no disponible para este tipo de archivo</p>
@@ -1176,12 +1172,11 @@ export default function ExploradorPage() {
                 )}
 
                 {/* Detalle tab */}
-                {/* Detalle tab */}
                 {detailTab === 'detalle' && (
                   <DetallePanelContent doc={docFull} loading={docFullLoading} compact />
                 )}
 
-                {/* AuditorÃ­a tab */}
+                {/* Auditoría tab */}
                 {detailTab === 'auditoria' && (
                   <AuditoriaTimeline eventos={docFull?.eventos ?? []} loading={docFullLoading} />
                 )}
@@ -1192,8 +1187,8 @@ export default function ExploradorPage() {
                     {versionsLoading && <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.6)' }}>Cargando historial...</p>}
                     {!versionsLoading && versions.length === 0 && (
                       <div className="flex flex-col items-center gap-2 mt-8">
-                        <span style={{ fontSize: 28 }}>ðŸ“­</span>
-                        <p className="text-xs text-center" style={{ color: 'rgba(100,116,139,0.5)' }}>Este archivo aÃºn no ha sido procesado por el gestor.</p>
+                        <span style={{ fontSize: 28 }}>📭</span>
+                        <p className="text-xs text-center" style={{ color: 'rgba(100,116,139,0.5)' }}>Este archivo aún no ha sido procesado por el gestor.</p>
                       </div>
                     )}
                     {!versionsLoading && versions.map((v, i) => (
@@ -1203,8 +1198,8 @@ export default function ExploradorPage() {
                           <StatusChip status={v.estado} />
                         </div>
                         <p style={{ fontSize: 11, color: '#94a3b8' }}>{formatDate(v.creadoEn)}</p>
-                        {v.tipo && <p style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)', marginTop: 2 }}>{v.tipo}{v.area ? ` Â· ${v.area}` : ''}</p>}
-                        {v.resumen && <p className="mt-1.5" style={{ fontSize: 11, color: 'rgba(203,213,225,0.7)', lineHeight: 1.5 }}>{v.resumen.slice(0, 120)}{v.resumen.length > 120 ? 'â€¦' : ''}</p>}
+                        {v.tipo && <p style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)', marginTop: 2 }}>{v.tipo}{v.area ? ` · ${v.area}` : ''}</p>}
+                        {v.resumen && <p className="mt-1.5" style={{ fontSize: 11, color: 'rgba(203,213,225,0.7)', lineHeight: 1.5 }}>{v.resumen.slice(0, 120)}{v.resumen.length > 120 ? '…' : ''}</p>}
                       </div>
                     ))}
                   </>
@@ -1223,7 +1218,7 @@ export default function ExploradorPage() {
   );
 }
 
-// â”€â”€ Modal visor reutilizable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Modal visor reutilizable ───────────────────────────────────────────────────
 interface DocFull {
   id: string; nombre: string; tipo: string; area?: string; estado: string
   resumen?: string; datosClave?: string; textoExtraido?: string; mimeType?: string
@@ -1236,7 +1231,7 @@ function fmtD(d: string) {
   return new Date(d).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 function fmtB(b?: number) {
-  if (!b) return 'â€”'
+  if (!b) return '—'
   if (b < 1024) return b + ' B'
   if (b < 1_048_576) return (b / 1024).toFixed(1) + ' KB'
   return (b / 1_048_576).toFixed(1) + ' MB'
@@ -1272,7 +1267,7 @@ function DocVisorModal({ id, nombre, onClose }: { id: string; nombre: string; on
   const TABS: { key: VTab; label: string }[] = [
     { key: 'archivo', label: 'Archivo' },
     { key: 'detalle', label: 'Detalle' },
-    { key: 'auditoria', label: 'AuditorÃ­a' },
+    { key: 'auditoria', label: 'Auditoría' },
   ]
 
   return createPortal(
@@ -1288,7 +1283,7 @@ function DocVisorModal({ id, nombre, onClose }: { id: string; nombre: string; on
         <div className="flex items-center justify-between px-5 py-3.5 flex-shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.025)' }}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <span style={{ fontSize: 16 }}>ðŸ“„</span>
+            <span style={{ fontSize: 16 }}>📄</span>
             <span className="text-sm font-semibold text-white/90 truncate">{nombre}</span>
             {doc?.tipo && (
               <span className="text-[11px] px-2 py-0.5 rounded-md border font-semibold flex-shrink-0 text-sky-300 bg-sky-500/10 border-sky-500/25">
@@ -1307,17 +1302,17 @@ function DocVisorModal({ id, nombre, onClose }: { id: string; nombre: string; on
               <>
                 <a href={url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 px-2.5 py-1.5 rounded-lg hover:bg-sky-500/10 transition-all">
-                  â†— Nueva pestaÃ±a
+                  ↗ Nueva pestaña
                 </a>
                 <a href={`/api/documentos/${id}/archivo`} download
                   className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.07] transition-all">
-                  â†“ Descargar
+                  ↓ Descargar
                 </a>
               </>
             )}
             <button onClick={onClose}
               className="p-1.5 rounded-lg text-white/30 hover:text-white/80 hover:bg-white/[0.08] transition-all ml-1" title="Cerrar (Esc)">
-              âœ•
+              ✕
             </button>
           </div>
         </div>
@@ -1336,13 +1331,13 @@ function DocVisorModal({ id, nombre, onClose }: { id: string; nombre: string; on
         {/* Contenido */}
         <div className="flex-1 overflow-auto min-h-0">
           {tab === 'archivo' && (
-            cargando ? <div className="flex justify-center py-20"><span style={{ color: '#38bdf8' }}>Cargandoâ€¦</span></div>
+            cargando ? <div className="flex justify-center py-20"><span style={{ color: '#38bdf8' }}>Cargando…</span></div>
             : isPdf ? <iframe src={url} className="w-full" style={{ minHeight: '65vh', border: 'none', background: '#fff' }} title={nombre} />
-            : isTxt ? <pre className="p-6 text-xs leading-relaxed whitespace-pre-wrap font-mono" style={{ color: 'rgba(255,255,255,0.7)' }}>{doc?.textoExtraido ?? '(sin contenido extraÃ­do)'}</pre>
+            : isTxt ? <pre className="p-6 text-xs leading-relaxed whitespace-pre-wrap font-mono" style={{ color: 'rgba(255,255,255,0.7)' }}>{doc?.textoExtraido ?? '(sin contenido extraído)'}</pre>
             : <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <span style={{ fontSize: 40 }}>ðŸ“„</span>
+                <span style={{ fontSize: 40 }}>📄</span>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Vista previa no disponible</p>
-                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm" style={{ color: '#38bdf8' }}>Abrir en nueva pestaÃ±a â†—</a>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm" style={{ color: '#38bdf8' }}>Abrir en nueva pestaña ↗</a>
               </div>
           )}
 
