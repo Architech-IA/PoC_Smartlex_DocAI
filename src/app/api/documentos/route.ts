@@ -4,13 +4,14 @@ import { runSkill } from '@/lib/claudeCode';
 import { getEmbedding } from '@/lib/embeddings';
 import { logEvento } from '@/lib/auditoria';
 import { createHash } from 'node:crypto';
-import { mkdir, rename } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const MAX_BYTES = MAX_MB * 1_048_576;
+const INGESTA_BASE_PATH = process.env.INGESTA_BASE_PATH ?? '/app/ingesta';
 const SILVER_BASE_PATH = process.env.SILVER_BASE_PATH ?? '/app/procesados';
 const TIPO_A_CARPETA: Record<string, string> = {
   CONTRATO:            'Contratos',
@@ -37,16 +38,15 @@ export async function POST(req: NextRequest) {
     const archivo = formData.get('archivo') as File | null;
     const proyectoId = formData.get('proyectoId') as string | null;
     const actor = (formData.get('actor') as string | null) ?? 'sistema';
-    const origenCarpeta = (formData.get('origenCarpeta') as string | null) ?? null;
+    const origenCarpetaParam = (formData.get('origenCarpeta') as string | null) ?? null;
 
     if (!archivo) {
       return NextResponse.json({ error: 'Se requiere el campo "archivo"' }, { status: 400 });
     }
 
-    // Validar tamaño
     if (archivo.size > MAX_BYTES) {
       return NextResponse.json(
-        { error: `El archivo supera el límite de ${MAX_MB}MB (tamaño: ${(archivo.size / 1_048_576).toFixed(1)}MB)` },
+        { error: `El archivo supera el limite de ${MAX_MB}MB (tamano: ${(archivo.size / 1_048_576).toFixed(1)}MB)` },
         { status: 413 },
       );
     }
@@ -56,10 +56,8 @@ export async function POST(req: NextRequest) {
     const archivoBase64 = buffer.toString('base64');
     const mimeType = inferMime(archivo.name);
 
-    // Verificar duplicado exacto
     const existente = await prisma.documento.findUnique({ where: { hashSha256 } });
     if (existente) {
-      // Si ya existe pero falló, permitir reprocesamiento: resetear a PROCESANDO
       if (existente.estado === 'ERROR') {
         await prisma.documento.update({
           where: { id: existente.id },
@@ -69,15 +67,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ documentoId: existente.id, estado: 'PROCESANDO', nombre: existente.nombre }, { status: 202 });
       }
       return NextResponse.json(
-        { error: 'Archivo duplicado — ya existe un documento idéntico', documentoId: existente.id, nombre: existente.nombre },
+        { error: 'Archivo duplicado — ya existe un documento identico', documentoId: existente.id, nombre: existente.nombre },
         { status: 409 },
       );
     }
 
-    // Crear registro en PROCESANDO
+    // Guardar en BRONZE para que aparezca en el Explorador
+    const safeName = archivo.name.replace(/[^a-zA-Z0-9._\-\s]/g, '_');
+    await mkdir(INGESTA_BASE_PATH, { recursive: true });
+    await writeFile(join(INGESTA_BASE_PATH, safeName), buffer);
+
+    // origenCarpeta = BRONZE para que clasificarDocumento lo mueva a SILVER tras procesar
+    const origenCarpeta = origenCarpetaParam ?? INGESTA_BASE_PATH;
+
     const doc = await prisma.documento.create({
       data: {
-        nombre: archivo.name,
+        nombre: safeName,
         tipo: 'OTRO',
         origen: 'SUBIDO',
         origenCarpeta,
@@ -91,12 +96,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor, detalle: `Subido: ${archivo.name}` });
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor, detalle: `Subido: ${safeName}` });
+    clasificarDocumento(doc.id, buffer, safeName, actor).catch(() => {});
 
-    // Clasificar con Skill (async — actualizamos el doc después)
-    clasificarDocumento(doc.id, buffer, archivo.name, actor).catch(() => {});
-
-    return NextResponse.json({ documentoId: doc.id, estado: 'PROCESANDO', nombre: archivo.name }, { status: 202 });
+    return NextResponse.json({ documentoId: doc.id, estado: 'PROCESANDO', nombre: safeName }, { status: 202 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -118,11 +121,11 @@ async function clasificarDocumento(
       } else {
         texto = buffer.toString('utf8').slice(0, 8_000);
       }
-    } catch {
+    } catch (_e) {
       texto = buffer.toString('utf8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').slice(0, 8_000);
     }
-    const input = JSON.stringify({ nombre, contenido: texto });
-    const salidaRaw = await runSkill('clasificar-documento', input);
+
+    const salidaRaw = await runSkill('clasificar-documento', JSON.stringify({ nombre, contenido: texto }));
 
     let clasificacion: {
       tipo?: string; area?: string; resumen?: string;
@@ -132,15 +135,14 @@ async function clasificarDocumento(
       const jsonMatch = salidaRaw.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : salidaRaw.trim();
       clasificacion = JSON.parse(jsonStr);
-    } catch {
+    } catch (_e) {
       clasificacion = { resumen: salidaRaw.slice(0, 500) };
     }
 
     const textoParaEmbed = [clasificacion.resumen ?? '', texto].join(' ').slice(0, 4_000);
     let embedding: number[] = [];
-    try { embedding = await getEmbedding(textoParaEmbed); } catch { /* silencioso */ }
+    try { embedding = await getEmbedding(textoParaEmbed); } catch (_e) { /* silencioso */ }
 
-    // Verificar similitud por embedding (sugerir versión si hay candidato similar)
     let similitudId: string | null = null;
     if (embedding.length > 0) {
       const candidatos = await prisma.$queryRaw<{ id: string; nombre: string; similitud: number }[]>`
@@ -177,8 +179,8 @@ async function clasificarDocumento(
       );
     }
 
-    // Mover archivo físico a SILVER si viene de BRONZE (origenCarpeta conocida)
-    const docParaMover = await prisma.documento.findUnique({ where: { id: docId }, select: { origenCarpeta: true, nombre: true, tipo: true } });
+    // Mover archivo fisico de BRONZE a SILVER
+    const docParaMover = await prisma.documento.findUnique({ where: { id: docId }, select: { origenCarpeta: true, nombre: true } });
     if (docParaMover?.origenCarpeta && docParaMover.origenCarpeta.includes('ingesta')) {
       try {
         const tipoFinal = clasificacion.tipo ?? 'OTRO';
@@ -189,11 +191,11 @@ async function clasificarDocumento(
         const destPath = join(destDir, docParaMover.nombre);
         await rename(srcPath, destPath).catch(() => {});
         await prisma.documento.update({ where: { id: docId }, data: { origenCarpeta: destDir } });
-      } catch { /* silencioso si el archivo ya no existe */ }
+      } catch (_e) { /* silencioso si el archivo ya no existe */ }
     }
 
     const detalle = similitudId
-      ? `Clasificado. Posible versión de doc ${similitudId}`
+      ? `Clasificado. Posible version de doc ${similitudId}`
       : 'Clasificado correctamente';
     await logEvento({ entidad: 'DOCUMENTO', entidadId: docId, accion: 'MODIFICAR', actor, detalle });
   } catch (err) {
