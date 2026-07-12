@@ -1132,25 +1132,61 @@ export default function ExploradorPage() {
               <div className="flex-1 overflow-auto p-3">
 
                 {/* Info tab */}
-                {detailTab === 'info' && (
-                  <div className="flex flex-col gap-2">
-                    {[
-                      ['Nombre', focusedEntry.name],
-                      ['Extensión', focusedEntry.ext?.toUpperCase() ?? '—'],
-                      ['Tamaño', formatBytes(focusedEntry.sizeBytes)],
-                      ['Modificado', formatDate(focusedEntry.modifiedAt)],
-                      ['Ruta', focusedEntry.fullPath],
-                      ['Estado', statusMap[focusedEntry.name]?.estado ? STATUS_CFG[statusMap[focusedEntry.name]?.estado]?.label ?? statusMap[focusedEntry.name]?.estado : 'No indexado'],
-                    ].map(([k, v]) => (
-                      <div key={k} className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <p style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{k}</p>
-                        <p className="mt-0.5 break-all" style={{ fontSize: 12, color: '#cbd5e1' }}>{v}</p>
+                {detailTab === 'info' && (() => {
+                  const ext = focusedEntry.ext?.toUpperCase() ?? '';
+                  const ftypeBg = ext === 'PDF' ? 'rgba(226,75,74,0.18)' : ext === 'DOCX' || ext === 'DOC' ? 'rgba(55,138,221,0.18)' : 'rgba(100,116,139,0.18)';
+                  const ftypeColor = ext === 'PDF' ? '#f87171' : ext === 'DOCX' || ext === 'DOC' ? '#60a5fa' : '#94a3b8';
+                  const estadoKey = statusMap[focusedEntry.name]?.estado;
+                  const estadoCfg = estadoKey ? (STATUS_CFG[estadoKey] ?? null) : null;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Tipo de archivo + nombre */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0, background: ftypeBg, color: ftypeColor, letterSpacing: '0.02em' }}>{ext || '?'}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{focusedEntry.name}</p>
+                          <p style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)', marginTop: 2 }}>{formatBytes(focusedEntry.sizeBytes)} · {formatDate(focusedEntry.modifiedAt)}</p>
+                        </div>
                       </div>
-                    ))}
-                    <button onClick={() => openMoveModal([focusedEntry])} className="w-full py-2 rounded-lg text-xs font-medium mt-1"
-                      style={{ background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.2)', color: '#818cf8' }}>→ Mover a otra carpeta</button>
-                  </div>
-                )}
+
+                      {/* Metadatos en tabla compacta */}
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.55)' }}>Estado</span>
+                          {estadoCfg
+                            ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: estadoCfg.bg, color: estadoCfg.color, border: `1px solid ${estadoCfg.color}22` }}>{estadoCfg.icon} {estadoCfg.label}</span>
+                            : <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)' }}>No indexado</span>}
+                        </div>
+                        {[
+                          ['Extensión', ext || '—'],
+                          ['Tamaño', formatBytes(focusedEntry.sizeBytes)],
+                          ['Modificado', formatDate(focusedEntry.modifiedAt)],
+                        ].map(([k, v], i) => (
+                          <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.55)' }}>{k}</span>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>{v}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Ruta con botón copiar */}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '7px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 9, color: 'rgba(100,116,139,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Ruta</span>
+                          <button onClick={() => navigator.clipboard.writeText(focusedEntry.fullPath)}
+                            style={{ fontSize: 9, color: 'rgba(129,140,248,0.7)', background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.15)', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>
+                            Copiar
+                          </button>
+                        </div>
+                        <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5, margin: 0 }}>{focusedEntry.fullPath}</p>
+                      </div>
+
+                      <button onClick={() => openMoveModal([focusedEntry])} style={{ width: '100%', padding: '8px', borderRadius: 8, fontSize: 11, fontWeight: 500, textAlign: 'center', background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.18)', color: '#818cf8', cursor: 'pointer' }}>
+                        → Mover a otra carpeta
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Preview tab */}
                 {detailTab === 'preview' && (
