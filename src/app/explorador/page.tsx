@@ -129,6 +129,87 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+type AuditoriaEvento = { id: string; accion: string; actor?: string; detalle?: string; createdAt: string };
+
+const AUDITORIA_CFG: Record<string, { label: string; dot: string; badge: string; text: string }> = {
+  VER:                  { label: 'VER',        dot: '#60a5fa', badge: 'rgba(55,138,221,0.15)',  text: '#60a5fa' },
+  CREAR:                { label: 'CREAR',      dot: '#86efac', badge: 'rgba(99,153,34,0.15)',   text: '#86efac' },
+  MODIFICAR:            { label: 'MODIFICAR',  dot: '#fbbf24', badge: 'rgba(245,158,11,0.15)', text: '#fbbf24' },
+  ERROR:                { label: 'ERROR',      dot: '#f87171', badge: 'rgba(226,75,74,0.15)',   text: '#f87171' },
+  ERROR_PROCESAMIENTO:  { label: 'ERROR',      dot: '#f87171', badge: 'rgba(226,75,74,0.15)',   text: '#f87171' },
+  EXPORTAR:             { label: 'EXPORTAR',   dot: '#a78bfa', badge: 'rgba(129,140,248,0.15)', text: '#a78bfa' },
+};
+const AUDITORIA_DEFAULT = { label: 'ACCIÓN', dot: 'rgba(148,163,184,0.5)', badge: 'rgba(255,255,255,0.07)', text: '#94a3b8' };
+
+function fmtAuditDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+function fmtAuditDay(iso: string) {
+  const d = new Date(iso);
+  const hoy = new Date();
+  const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+  if (d.toDateString() === hoy.toDateString()) return 'Hoy';
+  if (d.toDateString() === ayer.toDateString()) return 'Ayer';
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function AuditoriaTimeline({ eventos, loading }: { eventos: AuditoriaEvento[]; loading: boolean }) {
+  if (loading) return <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.6)' }}>Cargando...</p>;
+  if (!eventos.length) return <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.5)' }}>Sin eventos registrados.</p>;
+
+  // Agrupar por día
+  const grupos: { dia: string; items: AuditoriaEvento[] }[] = [];
+  for (const ev of eventos) {
+    const dia = fmtAuditDay(ev.createdAt);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.dia === dia) ultimo.items.push(ev);
+    else grupos.push({ dia, items: [ev] });
+  }
+
+  return (
+    <div style={{ paddingTop: 4 }}>
+      {grupos.map((grupo) => (
+        <div key={grupo.dia} style={{ marginBottom: 16 }}>
+          {/* Separador de día */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.55)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{grupo.dia}</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.05)' }} />
+          </div>
+          {/* Timeline */}
+          <div style={{ position: 'relative', paddingLeft: 22 }}>
+            <div style={{ position: 'absolute', left: 6, top: 8, bottom: 8, width: 1, background: 'rgba(255,255,255,0.07)' }} />
+            {grupo.items.map((ev) => {
+              const cfg = AUDITORIA_CFG[ev.accion] ?? AUDITORIA_DEFAULT;
+              return (
+                <div key={ev.id} style={{ position: 'relative', marginBottom: 8 }}>
+                  {/* Punto */}
+                  <div style={{ position: 'absolute', left: -18, top: 13, width: 8, height: 8, borderRadius: '50%', background: cfg.dot, border: '2px solid #0a0a0a' }} />
+                  {/* Tarjeta */}
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5, background: cfg.badge, color: cfg.text }}>{cfg.label}</span>
+                    </div>
+                    {ev.detalle && <p style={{ fontSize: 11, color: 'rgba(203,213,225,0.7)', lineHeight: 1.45, marginBottom: 5 }}>{ev.detalle}</p>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)' }}>{fmtAuditDate(ev.createdAt)}</span>
+                      {ev.actor && (
+                        <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '1px 7px' }}>
+                          {ev.actor === 'sistema' ? '⚙ sistema' : `👤 ${ev.actor}`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ExploradorPage() {
   const [currentPath, setCurrentPath] = useState('');
   const [breadcrumb, setBreadcrumb] = useState<{ label: string; path: string }[]>([]);
@@ -1048,22 +1129,7 @@ export default function ExploradorPage() {
 
                 {/* Auditoría tab */}
                 {detailTab === 'auditoria' && (
-                  <div className="flex flex-col gap-2">
-                    {docFullLoading && <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.6)' }}>Cargando...</p>}
-                    {!docFullLoading && docFull && docFull.eventos.length === 0 && (
-                      <p className="text-xs text-center mt-8" style={{ color: 'rgba(100,116,139,0.5)' }}>Sin eventos registrados.</p>
-                    )}
-                    {!docFullLoading && docFull && docFull.eventos.map((ev) => (
-                      <div key={ev.id} className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div className="flex items-center justify-between">
-                          <span style={{ fontSize: 11, color: BRAND_L, fontWeight: 600 }}>{ev.accion}</span>
-                          <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)' }}>{fmtD(ev.createdAt)}</span>
-                        </div>
-                        {ev.actor && <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{ev.actor}</p>}
-                        {ev.detalle && <p style={{ fontSize: 11, color: 'rgba(203,213,225,0.65)', marginTop: 2 }}>{ev.detalle}</p>}
-                      </div>
-                    ))}
-                  </div>
+                  <AuditoriaTimeline eventos={docFull?.eventos ?? []} loading={docFullLoading} />
                 )}
 
                 {/* Versions tab */}
@@ -1270,26 +1336,7 @@ function DocVisorModal({ id, nombre, onClose }: { id: string; nombre: string; on
           )}
 
           {tab === 'auditoria' && (
-            cargando ? <div className="flex justify-center py-12"><span style={{ color: '#38bdf8' }}>Cargando…</span></div>
-            : !doc?.eventos?.length ? <p className="text-sm text-center py-12" style={{ color: 'rgba(255,255,255,0.3)' }}>Sin eventos</p>
-            : <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-[11px] uppercase tracking-widest" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }}>
-                    <th className="text-left px-5 py-3">Acción</th><th className="text-left px-4 py-3">Actor</th>
-                    <th className="text-left px-4 py-3">Detalle</th><th className="text-left px-4 py-3">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {doc.eventos.map(ev => (
-                    <tr key={ev.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td className="px-5 py-2.5 font-mono text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>{ev.accion}</td>
-                      <td className="px-4 py-2.5 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{ev.actor ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-xs max-w-xs truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>{ev.detalle ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.25)' }}>{fmtD(ev.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <AuditoriaTimeline eventos={doc?.eventos ?? []} loading={cargando} />
           )}
         </div>
       </div>
