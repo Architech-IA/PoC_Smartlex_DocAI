@@ -4,14 +4,13 @@ import { runSkill } from '@/lib/claudeCode';
 import { getEmbedding } from '@/lib/embeddings';
 import { logEvento } from '@/lib/auditoria';
 import { createHash } from 'node:crypto';
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const MAX_BYTES = MAX_MB * 1_048_576;
-const INGESTA_BASE_PATH = process.env.INGESTA_BASE_PATH ?? '/app/ingesta';
 const SILVER_BASE_PATH = process.env.SILVER_BASE_PATH ?? '/app/procesados';
 const TIPO_A_CARPETA: Record<string, string> = {
   CONTRATO:            'Contratos',
@@ -32,13 +31,16 @@ function inferMime(nombre: string): string {
   return 'application/octet-stream';
 }
 
+// Llamado desde "Procesar en gestor" en el Explorador (archivo ya esta en BRONZE)
+// o desde la ETL automatica. El archivo se mueve de BRONZE a SILVER y se indexa.
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const archivo = formData.get('archivo') as File | null;
     const proyectoId = formData.get('proyectoId') as string | null;
     const actor = (formData.get('actor') as string | null) ?? 'sistema';
-    const origenCarpetaParam = (formData.get('origenCarpeta') as string | null) ?? null;
+    // origenCarpeta = carpeta BRONZE donde esta el archivo fisicamente
+    const origenCarpeta = (formData.get('origenCarpeta') as string | null) ?? null;
 
     if (!archivo) {
       return NextResponse.json({ error: 'Se requiere el campo "archivo"' }, { status: 400 });
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
           where: { id: existente.id },
           data: { estado: 'PROCESANDO', resumen: null, datosClave: null, textoExtraido: null },
         });
-        clasificarDocumento(existente.id, buffer, archivo.name, actor).catch(() => {});
+        clasificarDocumento(existente.id, buffer, archivo.name, actor, origenCarpeta).catch(() => {});
         return NextResponse.json({ documentoId: existente.id, estado: 'PROCESANDO', nombre: existente.nombre }, { status: 202 });
       }
       return NextResponse.json(
@@ -72,17 +74,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Guardar en BRONZE para que aparezca en el Explorador
-    const safeName = archivo.name.replace(/[^a-zA-Z0-9._\-\s]/g, '_');
-    await mkdir(INGESTA_BASE_PATH, { recursive: true });
-    await writeFile(join(INGESTA_BASE_PATH, safeName), buffer);
-
-    // origenCarpeta = BRONZE para que clasificarDocumento lo mueva a SILVER tras procesar
-    const origenCarpeta = origenCarpetaParam ?? INGESTA_BASE_PATH;
-
     const doc = await prisma.documento.create({
       data: {
-        nombre: safeName,
+        nombre: archivo.name,
         tipo: 'OTRO',
         origen: 'SUBIDO',
         origenCarpeta,
@@ -96,10 +90,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor, detalle: `Subido: ${safeName}` });
-    clasificarDocumento(doc.id, buffer, safeName, actor).catch(() => {});
+    await logEvento({ entidad: 'DOCUMENTO', entidadId: doc.id, accion: 'CREAR', actor, detalle: `Procesado desde BRONZE: ${archivo.name}` });
 
-    return NextResponse.json({ documentoId: doc.id, estado: 'PROCESANDO', nombre: safeName }, { status: 202 });
+    // Clasificar, generar embedding y mover a SILVER de forma asincrona
+    clasificarDocumento(doc.id, buffer, archivo.name, actor, origenCarpeta).catch(() => {});
+
+    return NextResponse.json({ documentoId: doc.id, estado: 'PROCESANDO', nombre: archivo.name }, { status: 202 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -111,6 +107,7 @@ async function clasificarDocumento(
   buffer: Buffer,
   nombre: string,
   actor: string,
+  origenCarpeta: string | null,
 ): Promise<void> {
   try {
     let texto = '';
@@ -139,6 +136,11 @@ async function clasificarDocumento(
       clasificacion = { resumen: salidaRaw.slice(0, 500) };
     }
 
+    const tipoFinal = clasificacion.tipo ?? 'OTRO';
+    const subcarpeta = TIPO_A_CARPETA[tipoFinal] ?? 'Otros';
+    const destDir = join(SILVER_BASE_PATH, subcarpeta);
+    await mkdir(destDir, { recursive: true });
+
     const textoParaEmbed = [clasificacion.resumen ?? '', texto].join(' ').slice(0, 4_000);
     let embedding: number[] = [];
     try { embedding = await getEmbedding(textoParaEmbed); } catch (_e) { /* silencioso */ }
@@ -162,11 +164,12 @@ async function clasificarDocumento(
     await prisma.documento.update({
       where: { id: docId },
       data: {
-        tipo: clasificacion.tipo ?? 'OTRO',
+        tipo: tipoFinal,
         area: clasificacion.area ?? null,
         resumen: clasificacion.resumen ?? null,
         datosClave: clasificacion.datosClave ?? null,
         textoExtraido: clasificacion.textoExtraido ?? texto.slice(0, 8_000),
+        origenCarpeta: destDir,
         estado: 'LISTO',
       },
     });
@@ -180,23 +183,26 @@ async function clasificarDocumento(
     }
 
     // Mover archivo fisico de BRONZE a SILVER
-    const docParaMover = await prisma.documento.findUnique({ where: { id: docId }, select: { origenCarpeta: true, nombre: true } });
-    if (docParaMover?.origenCarpeta && docParaMover.origenCarpeta.includes('ingesta')) {
+    if (origenCarpeta && origenCarpeta.includes('ingesta')) {
       try {
-        const tipoFinal = clasificacion.tipo ?? 'OTRO';
-        const subcarpeta = TIPO_A_CARPETA[tipoFinal] ?? 'Otros';
-        const destDir = join(SILVER_BASE_PATH, subcarpeta);
-        await mkdir(destDir, { recursive: true });
-        const srcPath = join(docParaMover.origenCarpeta, docParaMover.nombre);
-        const destPath = join(destDir, docParaMover.nombre);
-        await rename(srcPath, destPath).catch(() => {});
-        await prisma.documento.update({ where: { id: docId }, data: { origenCarpeta: destDir } });
-      } catch (_e) { /* silencioso si el archivo ya no existe */ }
+        const srcPath = join(origenCarpeta, nombre);
+        const destPath = join(destDir, nombre);
+        await rename(srcPath, destPath);
+        console.log(`[documentos] Movido ${nombre} → SILVER/${subcarpeta}/`);
+      } catch (e) {
+        console.error(`[documentos] No se pudo mover ${nombre} a SILVER:`, e);
+      }
+    }
+
+    // Actualizar docBronze si existe
+    const bronzeRec = await prisma.docBronze.findFirst({ where: { nombre, estado: 'RECIBIDO' } });
+    if (bronzeRec) {
+      await prisma.docBronze.update({ where: { id: bronzeRec.id }, data: { estado: 'ENVIADO_A_SILVER' } });
     }
 
     const detalle = similitudId
-      ? `Clasificado. Posible version de doc ${similitudId}`
-      : 'Clasificado correctamente';
+      ? `Clasificado como ${tipoFinal}. Posible version de doc ${similitudId}`
+      : `Clasificado como ${tipoFinal} → SILVER/${subcarpeta}`;
     await logEvento({ entidad: 'DOCUMENTO', entidadId: docId, accion: 'MODIFICAR', actor, detalle });
   } catch (err) {
     const detalle = err instanceof Error ? err.message : String(err);

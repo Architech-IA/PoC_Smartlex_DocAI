@@ -9,11 +9,8 @@ interface ArchivoItem {
   id: string
   file: File
   rutaCarpeta?: string
-  estado: 'pendiente' | 'subiendo' | 'procesando' | 'listo' | 'error'
-  documentoId?: string
+  estado: 'pendiente' | 'subiendo' | 'listo' | 'error'
   mensaje?: string
-  tipo?: string
-  area?: string
 }
 
 const MAX_MB = 15
@@ -33,8 +30,6 @@ function formatBytes(bytes: number) {
 
 export default function SubirDocumentosPage() {
   const [archivos, setArchivos] = useState<ArchivoItem[]>([])
-  const [actor, setActor] = useState('')
-  const [proyectoId, setProyectoId] = useState('')
   const [arrastrando, setArrastrando] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,7 +40,7 @@ export default function SubirDocumentosPage() {
     for (const file of files) {
       if (!TIPOS_ACEPTADOS.test(file.name)) continue
       if (file.size > MAX_MB * 1_048_576) {
-        nuevos.push({ id: crypto.randomUUID(), file, rutaCarpeta: carpetaBase, estado: 'error', mensaje: `Supera el límite de ${MAX_MB}MB` })
+        nuevos.push({ id: crypto.randomUUID(), file, rutaCarpeta: carpetaBase, estado: 'error', mensaje: `Supera el limite de ${MAX_MB}MB` })
         continue
       }
       nuevos.push({ id: crypto.randomUUID(), file, rutaCarpeta: carpetaBase, estado: 'pendiente' })
@@ -81,26 +76,6 @@ export default function SubirDocumentosPage() {
   const quitar = (id: string) => setArchivos(prev => prev.filter(a => a.id !== id))
   const limpiarLista = () => setArchivos([])
 
-  const poll = async (docId: string, itemId: string) => {
-    for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 3_000))
-      try {
-        const res = await fetch(`/api/documentos/${docId}/estado`)
-        if (!res.ok) break
-        const data = await res.json() as { estado: string; tipo?: string; area?: string }
-        if (data.estado === 'LISTO') {
-          setArchivos(prev => prev.map(a => a.id === itemId ? { ...a, estado: 'listo', tipo: data.tipo, area: data.area } : a))
-          return
-        }
-        if (data.estado === 'ERROR') {
-          setArchivos(prev => prev.map(a => a.id === itemId ? { ...a, estado: 'error', mensaje: 'Error en clasificación' } : a))
-          return
-        }
-      } catch { break }
-    }
-    setArchivos(prev => prev.map(a => a.id === itemId && a.estado === 'procesando' ? { ...a, mensaje: 'Procesando en segundo plano…' } : a))
-  }
-
   const subirTodo = async () => {
     const pendientes = archivos.filter(a => a.estado === 'pendiente')
     if (pendientes.length === 0) return
@@ -110,19 +85,15 @@ export default function SubirDocumentosPage() {
       setArchivos(prev => prev.map(a => a.id === item.id ? { ...a, estado: 'subiendo' } : a))
       const fd = new FormData()
       fd.append('archivo', item.file)
-      if (actor) fd.append('actor', actor)
-      if (proyectoId) fd.append('proyectoId', proyectoId)
-      if (item.rutaCarpeta) fd.append('origenCarpeta', item.rutaCarpeta)
 
       try {
-        const res = await fetch('/api/documentos', { method: 'POST', body: fd })
-        const data = await res.json() as { documentoId?: string; error?: string }
-        if (!res.ok || !data.documentoId) {
+        const res = await fetch('/api/bronze/upload', { method: 'POST', body: fd })
+        const data = await res.json() as { nombre?: string; error?: string }
+        if (!res.ok) {
           setArchivos(prev => prev.map(a => a.id === item.id ? { ...a, estado: 'error', mensaje: data.error ?? 'Error al subir' } : a))
           continue
         }
-        setArchivos(prev => prev.map(a => a.id === item.id ? { ...a, estado: 'procesando', documentoId: data.documentoId } : a))
-        poll(data.documentoId!, item.id)
+        setArchivos(prev => prev.map(a => a.id === item.id ? { ...a, estado: 'listo' } : a))
       } catch {
         setArchivos(prev => prev.map(a => a.id === item.id ? { ...a, estado: 'error', mensaje: 'Error de red' } : a))
       }
@@ -149,7 +120,7 @@ export default function SubirDocumentosPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Subir documentos</h1>
           <p className="text-sm text-[#555] mt-1">
-            Sube archivos individuales o carpetas completas. El sistema los clasifica automáticamente.
+            Los archivos se guardan en <span className="text-amber-400 font-medium">BRONZE</span>. Para indexarlos al gestor, usá <span className="text-white font-medium">Procesar en gestor</span> desde el Explorador.
           </p>
         </div>
 
@@ -168,8 +139,8 @@ export default function SubirDocumentosPage() {
           <div className="w-14 h-14 rounded-2xl bg-[#06b6d4]/10 border border-[#06b6d4]/20 flex items-center justify-center mx-auto mb-4">
             <Upload className="w-7 h-7 text-[#06b6d4]" />
           </div>
-          <p className="text-white font-medium mb-1">Arrastrá archivos aquí o hacé clic para seleccionar</p>
-          <p className="text-xs text-[#555]">PDF, DOC, DOCX, TXT, MD · Máx {MAX_MB}MB por archivo</p>
+          <p className="text-white font-medium mb-1">Arrastra archivos aqui o hace clic para seleccionar</p>
+          <p className="text-xs text-[#555]">PDF, DOC, DOCX, TXT, MD · Max {MAX_MB}MB por archivo</p>
           <div className="flex gap-3 justify-center mt-5" onClick={e => e.stopPropagation()}>
             <button
               type="button"
@@ -190,30 +161,8 @@ export default function SubirDocumentosPage() {
 
         <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.md" className="hidden" onChange={onSeleccionArchivos} />
         <input ref={carpetaRef} type="file" className="hidden" onChange={onSeleccionCarpeta}
-          // @ts-expect-error atributo no estándar
+          // @ts-expect-error atributo no estandar
           webkitdirectory="" />
-
-        {/* Metadata */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-[#555] mb-1.5">Tu nombre (opcional)</label>
-            <input
-              value={actor}
-              onChange={e => setActor(e.target.value)}
-              placeholder="Ej: María López"
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] placeholder:text-[#555] transition-colors"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-[#555] mb-1.5">ID del proyecto (opcional)</label>
-            <input
-              value={proyectoId}
-              onChange={e => setProyectoId(e.target.value)}
-              placeholder="cuid del proyecto..."
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] placeholder:text-[#555] transition-colors"
-            />
-          </div>
-        </div>
 
         {/* Lista de archivos */}
         {archivos.length > 0 && (
@@ -221,7 +170,7 @@ export default function SubirDocumentosPage() {
             <div className="flex items-center justify-between">
               <p className="text-sm text-[#555]">
                 {archivos.length} archivo{archivos.length !== 1 ? 's' : ''}
-                {listos > 0 && <span className="text-[#10b981] ml-2">· {listos} listos</span>}
+                {listos > 0 && <span className="text-amber-400 ml-2">· {listos} en BRONZE</span>}
                 {errores > 0 && <span className="text-[#ef4444] ml-2">· {errores} con error</span>}
               </p>
               <button onClick={limpiarLista} className="text-xs text-[#555] hover:text-[#aaa] transition-colors">
@@ -238,7 +187,6 @@ export default function SubirDocumentosPage() {
                     <p className="text-xs text-[#555]">
                       {formatBytes(item.file.size)}
                       {item.rutaCarpeta && <span className="ml-2">· {item.rutaCarpeta}</span>}
-                      {item.tipo && <span className="ml-2 text-[#06b6d4]">· {item.tipo}{item.area ? ` / ${item.area}` : ''}</span>}
                     </p>
                     {item.mensaje && <p className="text-xs text-[#ef4444] mt-0.5">{item.mensaje}</p>}
                   </div>
@@ -248,18 +196,10 @@ export default function SubirDocumentosPage() {
                       <span className="text-xs text-[#555] bg-[#111] border border-[#2a2a2a] px-2 py-0.5 rounded-full">Pendiente</span>
                     )}
                     {item.estado === 'subiendo' && <Loader2 className="w-4 h-4 text-[#06b6d4] animate-spin" />}
-                    {item.estado === 'procesando' && (
-                      <div className="flex items-center gap-1.5">
-                        <Loader2 className="w-4 h-4 text-[#f59e0b] animate-spin" />
-                        <span className="text-xs text-[#f59e0b]">Clasificando…</span>
-                      </div>
-                    )}
                     {item.estado === 'listo' && (
                       <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                        {item.documentoId && (
-                          <Link href={`/documentos/${item.documentoId}`} className="text-xs text-[#06b6d4] hover:underline">Ver</Link>
-                        )}
+                        <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs text-amber-400">En BRONZE</span>
                       </div>
                     )}
                     {item.estado === 'error' && <AlertCircle className="w-4 h-4 text-[#ef4444]" />}
@@ -286,10 +226,16 @@ export default function SubirDocumentosPage() {
                 onMouseLeave={(e) => { if (!subiendo) (e.currentTarget as HTMLButtonElement).style.background = '#06b6d4' }}
               >
                 {subiendo
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo…</>
-                  : <><Upload className="w-4 h-4" /> Subir {pendientes} archivo{pendientes !== 1 ? 's' : ''}</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                  : <><Upload className="w-4 h-4" /> Subir {pendientes} archivo{pendientes !== 1 ? 's' : ''} a BRONZE</>
                 }
               </button>
+            )}
+
+            {listos > 0 && pendientes === 0 && (
+              <p className="text-xs text-center text-[#555]">
+                Ve al <Link href="/explorador" className="text-amber-400 hover:underline">Explorador</Link> y usa <span className="text-white">⤴ Procesar en gestor</span> para indexarlos.
+              </p>
             )}
           </div>
         )}
