@@ -11,7 +11,7 @@ const pdfParse = require('pdf-parse');
 
 const MAX_MB = Number(process.env.MAX_DOCUMENTO_MB ?? '15');
 const MAX_BYTES = MAX_MB * 1_048_576;
-const SILVER_BASE_PATH = process.env.SILVER_BASE_PATH ?? '/app/procesados';
+const SILVER_BASE_PATH = process.env.SILVER_BASE_PATH ?? "/app/procesados";
 const TIPO_A_CARPETA: Record<string, string> = {
   CONTRATO:            'Contratos',
   ACTA:                'Actas',
@@ -138,7 +138,7 @@ async function clasificarDocumento(
 
     const tipoFinal = clasificacion.tipo ?? 'OTRO';
     const subcarpeta = TIPO_A_CARPETA[tipoFinal] ?? 'Otros';
-    const destDir = join(SILVER_BASE_PATH, subcarpeta);
+    const destDir = SILVER_BASE_PATH;
     await mkdir(destDir, { recursive: true });
 
     const textoParaEmbed = [clasificacion.resumen ?? '', texto].join(' ').slice(0, 4_000);
@@ -188,7 +188,7 @@ async function clasificarDocumento(
         const srcPath = join(origenCarpeta, nombre);
         const destPath = join(destDir, nombre);
         await rename(srcPath, destPath);
-        console.log(`[documentos] Movido ${nombre} → SILVER/${subcarpeta}/`);
+        console.log(`[documentos] Movido ${nombre} → SILVER/`);
       } catch (e) {
         console.error(`[documentos] No se pudo mover ${nombre} a SILVER:`, e);
       }
@@ -202,7 +202,7 @@ async function clasificarDocumento(
 
     const detalle = similitudId
       ? `Clasificado como ${tipoFinal}. Posible version de doc ${similitudId}`
-      : `Clasificado como ${tipoFinal} → SILVER/${subcarpeta}`;
+      : `Clasificado como ${tipoFinal} → SILVER`;
     await logEvento({ entidad: 'DOCUMENTO', entidadId: docId, accion: 'MODIFICAR', actor, detalle });
   } catch (err) {
     const detalle = err instanceof Error ? err.message : String(err);
