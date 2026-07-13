@@ -947,7 +947,7 @@ export default function ExploradorPage() {
 
           {/* ── Detail drawer ── */}
           {focusedEntry && focusedEntry.type === 'file' && (
-            <div className="flex flex-col rounded-2xl overflow-hidden flex-shrink-0" style={{ ...GLASS, width: 300 }}>
+            <div className="flex flex-col rounded-2xl overflow-hidden flex-shrink-0" style={{ ...GLASS, width: 400 }}>
               {/* File summary */}
               <div className="p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="flex items-start gap-3 mb-3">

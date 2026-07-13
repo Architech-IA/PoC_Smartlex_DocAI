@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -25,26 +25,16 @@ services:
       OLLAMA_URL: "http://host-gateway:11434"
       OLLAMA_MODEL: "qwen3-embedding:0.6b"
       OLLAMA_EMBEDDING_DIM: "1024"
-      INGESTA_BASE_PATH: "/app/ingesta"
-      SILVER_BASE_PATH: "/app/procesados"
-      OBSIDIAN_VAULT_PATH: "/app/vault"
-      FS_EXPLORER_ROOTS: "/app/ingesta,/app/procesados,/app/vault,/app/gold"
-      NOTION_TOKEN: ""
+      INGESTA_BASE_PATH: "/root/smartlex-ingesta"
       MAX_DOCUMENTO_MB: "15"
       RETENCION_ANIOS: "10"
       NODE_ENV: production
-      HOME: /home/nextjs
     ports:
       - "3002:3000"
     extra_hosts:
       - "host-gateway:host-gateway"
     volumes:
-      - /root/smartlex-ingesta:/app/ingesta
-      - /root/smartlex-vault:/app/vault
-      - /root/smartlex-procesados:/app/procesados
-      - /root/smartlex-gold:/app/gold
-      - /root/.claude:/home/nextjs/.claude:ro
-      - /root/.claude.json:/home/nextjs/.claude.json:ro
+      - /root/smartlex-ingesta:/root/smartlex-ingesta
 
 volumes:
   pgdata:
