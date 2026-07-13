@@ -415,7 +415,7 @@ export default function ExploradorPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const openFile = async (entry: Entry) => {
+  const openFile = async (entry: Entry, smMap?: Record<string, { estado: string; id: string }>) => {
     setFocusedEntry(entry);
     setPreview(null);
     setVersions([]);
@@ -427,6 +427,15 @@ export default function ExploradorPage() {
     setGoldExpedienteId('');
     setGoldNotas('');
     setDetailTab('info');
+    // Auto-carga datos GOLD cuando el archivo vive en la capa gold
+    if (currentPath.includes('/app/gold') || currentPath.includes('gold/clientes')) {
+      const map = smMap ?? statusMap;
+      const docId = map[entry.name]?.id;
+      if (docId) {
+        loadGold(docId);
+        loadDocFull(docId);
+      }
+    }
     const ext = entry.ext ?? '';
     if (PREVIEWABLE_TEXT.has(ext) || ext === '.pdf') {
       setPreviewLoading(true);
@@ -1138,8 +1147,55 @@ export default function ExploradorPage() {
                   const ftypeColor = ext === 'PDF' ? '#f87171' : ext === 'DOCX' || ext === 'DOC' ? '#60a5fa' : '#94a3b8';
                   const estadoKey = statusMap[focusedEntry.name]?.estado;
                   const estadoCfg = estadoKey ? (STATUS_CFG[estadoKey] ?? null) : null;
+                  const isGoldPath = currentPath.includes('/app/gold') || currentPath.includes('gold/clientes');
+                  const goldData = (isGoldPath && goldInfo && goldInfo !== 'none') ? goldInfo : null;
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                      {/* ── GOLD card — cliente / expediente / resumen IA ── */}
+                      {isGoldPath && (
+                        goldLoading
+                          ? <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.18)', fontSize: 11, color: 'rgba(245,158,11,0.5)' }}>Cargando datos GOLD…</div>
+                          : goldData ? (
+                            <div style={{ borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)', overflow: 'hidden' }}>
+                              {/* Header */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderBottom: '1px solid rgba(245,158,11,0.12)' }}>
+                                <span style={{ fontSize: 13 }}>🥇</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Asignado a GOLD</span>
+                              </div>
+                              {/* Cliente row */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: goldData.expediente ? '1px solid rgba(245,158,11,0.08)' : 'none' }}>
+                                <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)' }}>Cliente</span>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: '#fde68a' }}>{goldData.cliente.nombre}</span>
+                              </div>
+                              {/* Expediente row */}
+                              {goldData.expediente && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px' }}>
+                                  <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)' }}>Expediente</span>
+                                  <span style={{ fontSize: 11, color: '#fde68a' }}>
+                                    {goldData.expediente.codigo ? <span style={{ color: 'rgba(253,230,138,0.55)', marginRight: 4 }}>[{goldData.expediente.codigo}]</span> : null}
+                                    {goldData.expediente.nombre}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Resumen IA */}
+                              {docFull?.resumen && (
+                                <div style={{ borderTop: '1px solid rgba(245,158,11,0.1)', padding: '8px 10px' }}>
+                                  <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(245,158,11,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Resumen IA</div>
+                                  <p style={{ fontSize: 11, color: 'rgba(203,213,225,0.8)', lineHeight: 1.65, fontStyle: 'italic', margin: 0 }}>{docFull.resumen}</p>
+                                </div>
+                              )}
+                              {/* Tipo / Area chips */}
+                              {(docFull?.tipo || docFull?.area) && (
+                                <div style={{ borderTop: '1px solid rgba(245,158,11,0.08)', padding: '6px 10px', display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+                                  {docFull.tipo && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(96,165,250,0.12)', color: '#93c5fd', border: '1px solid rgba(96,165,250,0.2)' }}>{docFull.tipo}</span>}
+                                  {docFull.area && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.2)' }}>{docFull.area}</span>}
+                                </div>
+                              )}
+                            </div>
+                          ) : null
+                      )}
+
                       {/* Tipo de archivo + nombre */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
                         <div style={{ width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0, background: ftypeBg, color: ftypeColor, letterSpacing: '0.02em' }}>{ext || '?'}</div>
