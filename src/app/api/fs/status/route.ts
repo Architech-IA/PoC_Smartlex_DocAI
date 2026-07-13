@@ -21,20 +21,20 @@ export async function GET(req: NextRequest) {
   if (!dir || !isAllowed(dir)) return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
 
   const docs = await prisma.documento.findMany({
-    select: { id: true, nombre: true, estado: true, origenCarpeta: true },
+    select: { id: true, nombre: true, estado: true, tipo: true, origenCarpeta: true },
   });
 
   const enBronze = esBronze(dir);
-  const status: Record<string, { estado: string; id: string }> = {};
+  const status: Record<string, { estado: string; id: string; tipo: string }> = {};
 
   for (const doc of docs) {
     const docEnSilver = doc.origenCarpeta && !doc.origenCarpeta.includes('ingesta');
 
     if (enBronze && docEnSilver) {
       // Archivo en BRONZE pero ya indexado en SILVER: mostrar estado especial
-      status[doc.nombre] = { estado: 'EN_SILVER', id: doc.id };
+      status[doc.nombre] = { estado: 'EN_SILVER', id: doc.id, tipo: doc.tipo ?? '' };
     } else {
-      status[doc.nombre] = { estado: doc.estado, id: doc.id };
+      status[doc.nombre] = { estado: doc.estado, id: doc.id, tipo: doc.tipo ?? '' };
     }
   }
 

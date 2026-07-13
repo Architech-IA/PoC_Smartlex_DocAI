@@ -309,7 +309,7 @@ export default function ExploradorPage() {
   const [detailTab, setDetailTab] = useState<DetailTab>('info');
   const [preview, setPreview] = useState<{ type: string; content?: string; base64?: string } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [statusMap, setStatusMap] = useState<Record<string, { estado: string; id: string }>>({});
+  const [statusMap, setStatusMap] = useState<Record<string, { estado: string; id: string; tipo?: string }>>({});
   const [visorDoc, setVisorDoc] = useState<{ id: string; nombre: string; tipo: string } | null>(null);
   const [docFull, setDocFull] = useState<DocFull | null>(null);
   const [docFullLoading, setDocFullLoading] = useState(false);
@@ -616,7 +616,7 @@ export default function ExploradorPage() {
       const res = await fetch('/api/documentos', { method: 'POST', body: form });
       if (res.ok) {
         showToast('✓ Procesado y registrado en el gestor');
-        setStatusMap(prev => ({ ...prev, [entry.name]: { estado: 'PROCESANDO', id: '' } }));
+        setStatusMap(prev => ({ ...prev, [entry.name]: { estado: 'PROCESANDO', id: '', tipo: '' } }));
       } else {
         const err = await res.json();
         showToast('Error: ' + (err.error ?? 'desconocido'), false);
@@ -881,7 +881,13 @@ export default function ExploradorPage() {
                           </span>
                           <span className="text-right" style={{ fontSize: 11, color: 'rgba(100,116,139,0.7)' }}>{entry.type === 'file' ? formatBytes(entry.sizeBytes) : '—'}</span>
                           <span className="text-right" style={{ fontSize: 11, color: 'rgba(100,116,139,0.6)' }}>{formatDate(entry.modifiedAt)}</span>
-                          <span className="text-right" style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)', letterSpacing: '0.04em' }}>{entry.ext?.toUpperCase().slice(1) ?? 'DIR'}</span>
+                          {(() => {
+                              const tipoDoc = entry.type === 'file' ? statusMap[entry.name]?.tipo : null;
+                              const tipoCfgCell = tipoDoc ? (TIPO_BADGE[tipoDoc] ?? { bg: 'rgba(255,255,255,0.07)', color: '#94a3b8' }) : null;
+                              return tipoDoc
+                                ? <span className="text-right" style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: tipoCfgCell!.bg, color: tipoCfgCell!.color, letterSpacing: '0.05em' }}>{tipoDoc.replace('_', ' ')}</span>
+                                : <span className="text-right" style={{ fontSize: 10, color: 'rgba(100,116,139,0.5)', letterSpacing: '0.04em' }}>{entry.ext?.toUpperCase().slice(1) ?? 'DIR'}</span>;
+                            })()}
                         </div>
                       );
                     })}
