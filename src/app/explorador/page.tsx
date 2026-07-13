@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import GestorLayout from '@/components/GestorLayout';
+import GestorLayout from '@/components/GestorLayout'
+import ExpedienteModal from '@/components/ExpedienteModal';
 
 interface Entry {
   name: string;
@@ -331,6 +332,7 @@ export default function ExploradorPage() {
   const [goldNuevoNit, setGoldNuevoNit] = useState('');
   const [goldNuevoTipo, setGoldNuevoTipo] = useState('EMPRESA');
   const [goldCreando, setGoldCreando] = useState(false);
+  const [expModalId, setExpModalId] = useState<string | null>(null);
   const [versions, setVersions] = useState<DocVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
   // Context menu
@@ -1194,18 +1196,10 @@ export default function ExploradorPage() {
                               )}
                               {/* Link al expediente */}
                               {goldData.expediente && (
-                                <a href={`/expedientes/${goldData.expediente.id}`}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderTop: '1px solid rgba(245,158,11,0.1)', fontSize: 11, fontWeight: 600, color: '#fbbf24', textDecoration: 'none', background: 'rgba(245,158,11,0.04)', transition: 'background 0.15s' }}
-                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.1)')}
-                                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.04)')}>
+                                <button onClick={() => setExpModalId(goldData.expediente!.id)}
+                                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderTop: '1px solid rgba(245,158,11,0.1)', fontSize: 11, fontWeight: 600, color: '#fbbf24', background: 'rgba(245,158,11,0.04)', border: 'none', cursor: 'pointer' }}>
                                   Ver expediente completo →
-                                </a>
-                              )}
-                              {!goldData.expediente && (
-                                <a href={`/clientes`}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderTop: '1px solid rgba(245,158,11,0.1)', fontSize: 11, color: 'rgba(251,191,36,0.5)', textDecoration: 'none' }}>
-                                  Ver cliente →
-                                </a>
+                                </button>
                               )}
                             </div>
                           ) : null
@@ -1321,6 +1315,9 @@ export default function ExploradorPage() {
       {visorDoc && (
         <DocVisorModal id={visorDoc.id} nombre={visorDoc.nombre} onClose={() => setVisorDoc(null)} />
       )}
+
+      {/* Modal expediente */}
+      {expModalId && <ExpedienteModal expId={expModalId} onClose={() => setExpModalId(null)} />}
     </GestorLayout>
   );
 }
