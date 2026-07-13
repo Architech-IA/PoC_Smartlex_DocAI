@@ -1192,6 +1192,21 @@ export default function ExploradorPage() {
                                   {docFull.area && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.2)' }}>{docFull.area}</span>}
                                 </div>
                               )}
+                              {/* Link al expediente */}
+                              {goldData.expediente && (
+                                <a href={`/expedientes/${goldData.expediente.id}`}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderTop: '1px solid rgba(245,158,11,0.1)', fontSize: 11, fontWeight: 600, color: '#fbbf24', textDecoration: 'none', background: 'rgba(245,158,11,0.04)', transition: 'background 0.15s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.1)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.04)')}>
+                                  Ver expediente completo →
+                                </a>
+                              )}
+                              {!goldData.expediente && (
+                                <a href={`/clientes`}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderTop: '1px solid rgba(245,158,11,0.1)', fontSize: 11, color: 'rgba(251,191,36,0.5)', textDecoration: 'none' }}>
+                                  Ver cliente →
+                                </a>
+                              )}
                             </div>
                           ) : null
                       )}
