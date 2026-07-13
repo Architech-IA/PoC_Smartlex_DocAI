@@ -1160,11 +1160,6 @@ export default function ExploradorPage() {
                           ? <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.18)', fontSize: 11, color: 'rgba(245,158,11,0.5)' }}>Cargando datos GOLD…</div>
                           : goldData ? (
                             <div style={{ borderRadius: 8, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)', overflow: 'hidden' }}>
-                              {/* Header */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderBottom: '1px solid rgba(245,158,11,0.12)' }}>
-                                <span style={{ fontSize: 13 }}>🥇</span>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Asignado a GOLD</span>
-                              </div>
                               {/* Cliente row */}
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: goldData.expediente ? '1px solid rgba(245,158,11,0.08)' : 'none' }}>
                                 <span style={{ fontSize: 10, color: 'rgba(100,116,139,0.6)' }}>Cliente</span>

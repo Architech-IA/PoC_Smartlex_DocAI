@@ -1,0 +1,40 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smartlex-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartlex_docai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    image: smartlex-docai:latest
+    container_name: smartlex-docai
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/smartlex_docai"
+      DIRECT_URL: "postgresql://postgres:postgres@db:5432/smartlex_docai"
+      OLLAMA_URL: "http://host-gateway:11434"
+      OLLAMA_MODEL: "qwen3-embedding:0.6b"
+      OLLAMA_EMBEDDING_DIM: "1024"
+      INGESTA_BASE_PATH: "/root/smartlex-ingesta"
+      MAX_DOCUMENTO_MB: "15"
+      RETENCION_ANIOS: "10"
+      NODE_ENV: production
+    ports:
+      - "3002:3000"
+    extra_hosts:
+      - "host-gateway:host-gateway"
+    volumes:
+      - /root/smartlex-ingesta:/root/smartlex-ingesta
+
+volumes:
+  pgdata:
