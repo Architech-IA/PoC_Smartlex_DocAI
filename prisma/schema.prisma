@@ -109,20 +109,25 @@ model DocGold {
 }
 
 model Expediente {
-  id           String    @id @default(cuid())
-  clienteId    String
-  cliente      Cliente   @relation(fields: [clienteId], references: [id])
-  codigo       String?
-  nombre       String
-  descripcion  String?
-  estado       String    @default("ACTIVO")  // ACTIVO | CERRADO | EN_LITIGIO | ARCHIVADO
-  abogado      String?
-  radicado     String?
-  fechaInicio  DateTime?
-  fechaCierre  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  gold         DocGold[]
+  id                  String    @id @default(cuid())
+  clienteId           String
+  cliente             Cliente   @relation(fields: [clienteId], references: [id])
+  codigo              String?
+  nombre              String
+  descripcion         String?
+  estado              String    @default("ACTIVO")
+  abogado             String?
+  radicado            String?
+  fechaInicio         DateTime?
+  fechaCierre         DateTime?
+  partes              Json?
+  fechaLimite         DateTime?
+  resumenIA           String?
+  documentosFaltantes Json?
+  ultimoAnalisis      DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  gold                DocGold[]
 
   @@unique([clienteId, codigo])
 }
