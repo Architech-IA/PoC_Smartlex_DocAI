@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { getModuleInfo } from '@/lib/moduleInfo';
 
 type NavItem = { href: string; label: string; icon: string; adminOnly?: boolean };
 
@@ -16,7 +17,9 @@ const NAV_LINKS: NavItem[] = [
   { href: '/auditoria',         label: 'Auditoría',   icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
   { href: '/explorador',        label: 'Explorador',  icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
   { href: '/clientes',          label: 'Clientes',    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+  { href: '/vault',             label: 'Vault',       icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
   { href: '/sesiones',          label: 'Sesiones',    icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', adminOnly: true },
+  { href: '/ayuda',             label: 'Ayuda',       icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
 ];
 
 const MODULE_COLORS: Record<string, { icon: string; bg: string; border: string; glow: string }> = {
@@ -28,7 +31,9 @@ const MODULE_COLORS: Record<string, { icon: string; bg: string; border: string; 
   '/auditoria':         { icon: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: 'rgba(192,132,252,0.3)',  glow: '0 0 14px rgba(192,132,252,0.35)' },
   '/explorador':        { icon: '#34d399', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)',  glow: '0 0 14px rgba(16,185,129,0.35)'  },
   '/clientes':          { icon: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.25)',  glow: '0 0 14px rgba(96,165,250,0.35)'  },
+  '/vault':             { icon: '#818cf8', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.25)',  glow: '0 0 14px rgba(99,102,241,0.35)'  },
   '/sesiones':          { icon: '#f472b6', bg: 'rgba(244,114,182,0.12)', border: 'rgba(244,114,182,0.25)', glow: '0 0 14px rgba(244,114,182,0.35)' },
+  '/ayuda':             { icon: '#38bdf8', bg: 'rgba(56,189,248,0.12)',  border: 'rgba(56,189,248,0.25)',  glow: '0 0 14px rgba(56,189,248,0.35)'  },
 };
 const DEFAULT_MC = { icon: '#64748b', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.07)', glow: '' };
 
@@ -37,13 +42,11 @@ const BRAND_L      = '#fbbf24';
 const BRAND_DIM    = 'rgba(245,158,11,0.14)';
 const BRAND_BORDER = 'rgba(245,158,11,0.28)';
 
-// Liquid glass sidebar style
 const GLASS_BG     = 'rgba(4,4,14,0.55)';
 const GLASS_BLUR   = 'blur(32px) saturate(200%)';
 const GLASS_BORDER = '1px solid rgba(255,255,255,0.09)';
 const GLASS_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.10), inset 1px 0 0 rgba(255,255,255,0.04), 4px 0 40px rgba(0,0,0,0.35)';
 
-// Typography
 const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
 
 export default function GestorLayout({ children }: { children: React.ReactNode; activeHref?: string }) {
@@ -52,6 +55,9 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string; rol: string } | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  const modInfo = getModuleInfo(pathname);
 
   useEffect(() => {
     const saved = localStorage.getItem('sml-sidebar-collapsed');
@@ -69,7 +75,14 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => { setMobileOpen(false); setInfoOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (!infoOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setInfoOpen(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [infoOpen]);
 
   const toggleCollapse = () => {
     setCollapsed(prev => {
@@ -90,75 +103,24 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
         title={isCol ? item.label : undefined}
         className="flex items-center rounded-xl transition-all relative group"
         style={{
-          fontSize: '11px',
-          fontWeight: active ? 600 : 500,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase' as const,
-          gap: isCol ? '0' : '9px',
-          padding: isCol ? '7px 0' : '6px 9px',
-          justifyContent: isCol ? 'center' : 'flex-start',
+          fontSize: '11px', fontWeight: active ? 600 : 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+          gap: isCol ? '0' : '9px', padding: isCol ? '7px 0' : '6px 9px', justifyContent: isCol ? 'center' : 'flex-start',
           color: active ? BRAND_L : 'rgba(226,232,240,0.85)',
-          background: active
-            ? 'linear-gradient(90deg,rgba(245,158,11,0) 0%,rgba(245,158,11,0.07) 35%,rgba(245,158,11,0.22) 100%)'
-            : 'transparent',
+          background: active ? 'linear-gradient(90deg,rgba(245,158,11,0) 0%,rgba(245,158,11,0.07) 35%,rgba(245,158,11,0.22) 100%)' : 'transparent',
           border: active ? ('1px solid ' + BRAND_BORDER) : '1px solid transparent',
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
-          transition: 'all 0.15s ease',
+          textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.15s ease',
         }}
-        onMouseEnter={e => {
-          if (!active) {
-            const el = e.currentTarget as HTMLElement;
-            el.style.color = '#ffffff';
-            el.style.background = 'rgba(255,255,255,0.05)';
-            el.style.border = '1px solid rgba(255,255,255,0.08)';
-          }
-        }}
-        onMouseLeave={e => {
-          if (!active) {
-            const el = e.currentTarget as HTMLElement;
-            el.style.color = 'rgba(226,232,240,0.85)';
-            el.style.background = 'transparent';
-            el.style.border = '1px solid transparent';
-          }
-        }}
+        onMouseEnter={e => { if (!active) { const el = e.currentTarget as HTMLElement; el.style.color = '#ffffff'; el.style.background = 'rgba(255,255,255,0.05)'; el.style.border = '1px solid rgba(255,255,255,0.08)'; } }}
+        onMouseLeave={e => { if (!active) { const el = e.currentTarget as HTMLElement; el.style.color = 'rgba(226,232,240,0.85)'; el.style.background = 'transparent'; el.style.border = '1px solid transparent'; } }}
       >
-        {/* Active left bar */}
-        {active && !isCol && (
-          <span
-            className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full"
-            style={{ background: 'linear-gradient(180deg,' + BRAND_L + ',' + BRAND + ')' }}
-          />
-        )}
-        {/* Icon container */}
-        <span
-          className="flex items-center justify-center rounded-lg flex-shrink-0 transition-all"
-          style={{
-            width: '24px', height: '24px',
-            background: active ? mc.bg : 'rgba(255,255,255,0.04)',
-            border: '1px solid ' + (active ? mc.border : 'rgba(255,255,255,0.07)'),
-            boxShadow: active ? mc.glow : 'none',
-            backdropFilter: active ? 'blur(8px)' : 'none',
-          }}
-        >
-          <svg
-            style={{ color: active ? mc.icon : '#64748b', width: '14px', height: '14px', transition: 'color 0.15s ease' }}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
+        {active && !isCol && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full" style={{ background: 'linear-gradient(180deg,' + BRAND_L + ',' + BRAND + ')' }} />}
+        <span className="flex items-center justify-center rounded-lg flex-shrink-0 transition-all" style={{ width: '24px', height: '24px', background: active ? mc.bg : 'rgba(255,255,255,0.04)', border: '1px solid ' + (active ? mc.border : 'rgba(255,255,255,0.07)'), boxShadow: active ? mc.glow : 'none', backdropFilter: active ? 'blur(8px)' : 'none' }}>
+          <svg style={{ color: active ? mc.icon : '#64748b', width: '14px', height: '14px', transition: 'color 0.15s ease' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2 : 1.75} d={item.icon} />
           </svg>
         </span>
-        {/* Label */}
-        {!isCol && (
-          <span style={{ flex: 1 }}>{item.label}</span>
-        )}
-        {/* Active dot */}
-        {!isCol && active && (
-          <span
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ background: BRAND, boxShadow: '0 0 8px ' + BRAND }}
-          />
-        )}
+        {!isCol && <span style={{ flex: 1 }}>{item.label}</span>}
+        {!isCol && active && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: BRAND, boxShadow: '0 0 8px ' + BRAND }} />}
       </Link>
     );
   }
@@ -167,178 +129,79 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
     const isCol = !forceExpanded && collapsed && !isMobile;
     return (
       <>
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-3"
-          style={{
-            height: '56px',
-            flexShrink: 0,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            background: 'rgba(255,255,255,0.015)',
-          }}
-        >
+        <div className="flex items-center justify-between px-3" style={{ height: '56px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)' }}>
           {!isCol ? (
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              <div
-                className="flex-shrink-0 flex items-center justify-center rounded-xl"
-                style={{
-                  width: '32px', height: '32px',
-                  background: BRAND_DIM,
-                  border: '1px solid ' + BRAND_BORDER,
-                  boxShadow: '0 0 18px rgba(245,158,11,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
+              <div className="flex-shrink-0 flex items-center justify-center rounded-xl" style={{ width: '32px', height: '32px', background: BRAND_DIM, border: '1px solid ' + BRAND_BORDER, boxShadow: '0 0 18px rgba(245,158,11,0.25), inset 0 1px 0 rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}>
                 <Image src="/sml26-logo.png" alt="Smartlex" width={22} height={22} style={{ objectFit: 'contain' }} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span
-                  className="font-bold truncate"
-                  style={{
-                    fontSize: '12px',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(135deg,' + BRAND_L + ' 0%,' + BRAND + ' 55%,#fb923c 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  Smartlex
-                </span>
-                <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.6)', letterSpacing: '0.06em', fontWeight: 500, textTransform: 'uppercase' }}>
-                  DocAI
-                </span>
+                <span className="font-bold truncate" style={{ fontSize: '12px', letterSpacing: '0.14em', textTransform: 'uppercase', background: 'linear-gradient(135deg,' + BRAND_L + ' 0%,' + BRAND + ' 55%,#fb923c 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Smartlex</span>
+                <span style={{ fontSize: '10px', color: 'rgba(148,163,184,0.6)', letterSpacing: '0.06em', fontWeight: 500, textTransform: 'uppercase' }}>DocAI</span>
               </div>
             </div>
           ) : (
-            <button
-              onClick={toggleCollapse}
-              title="Expandir"
-              className="mx-auto flex items-center justify-center rounded-xl transition-all"
-              style={{
-                width: '36px', height: '36px',
-                background: BRAND_DIM,
-                border: '1px solid ' + BRAND_BORDER,
-                boxShadow: '0 0 18px rgba(245,158,11,0.25)',
-              }}
-            >
+            <button onClick={toggleCollapse} title="Expandir" className="mx-auto flex items-center justify-center rounded-xl transition-all" style={{ width: '36px', height: '36px', background: BRAND_DIM, border: '1px solid ' + BRAND_BORDER, boxShadow: '0 0 18px rgba(245,158,11,0.25)' }}>
               <Image src="/sml26-logo.png" alt="Smartlex" width={24} height={24} style={{ objectFit: 'contain' }} />
             </button>
           )}
-
           {!isCol && !isMobile && (
-            <button
-              onClick={toggleCollapse}
-              title="Colapsar sidebar"
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
-              style={{ color: '#475569', background: 'transparent', border: '1px solid transparent' }}
+            <button onClick={toggleCollapse} title="Colapsar sidebar" className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all" style={{ color: '#475569', background: 'transparent', border: '1px solid transparent' }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = BRAND_L; el.style.background = BRAND_DIM; el.style.border = '1px solid ' + BRAND_BORDER; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = '#475569'; el.style.background = 'transparent'; el.style.border = '1px solid transparent'; }}
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
             </button>
           )}
-
           {isMobile && (
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ color: '#64748b' }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={() => setMobileOpen(false)} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ color: '#64748b' }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           )}
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '10px 8px 8px' }}>
-          {!isCol && (
-            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(100,116,139,0.7)', textTransform: 'uppercase', padding: '0 4px 6px', marginBottom: '2px' }}>
-              Navegación
-            </p>
-          )}
-
+          {!isCol && <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(100,116,139,0.7)', textTransform: 'uppercase', padding: '0 4px 6px', marginBottom: '2px' }}>Navegación</p>}
           <div className="space-y-0.5">
             {NAV_LINKS.filter(item => !item.adminOnly || currentUser?.rol === 'admin').map(item => <NavLink key={item.href} item={item} isCol={isCol} />)}
           </div>
-
-          {/* Portal link */}
           <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            {!isCol && (
-              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(100,116,139,0.7)', textTransform: 'uppercase', padding: '0 4px 6px' }}>
-                Ecosistema
-              </p>
-            )}
-            <a
-              href="https://portal.architechia.co/hub"
-              target="_blank"
-              rel="noopener noreferrer"
-              title={isCol ? 'Portal ArchiTechIA' : undefined}
+            {!isCol && <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(100,116,139,0.7)', textTransform: 'uppercase', padding: '0 4px 6px' }}>Ecosistema</p>}
+            <a href="https://portal.architechia.co/hub" target="_blank" rel="noopener noreferrer" title={isCol ? 'Portal ArchiTechIA' : undefined}
               className="flex items-center rounded-xl transition-all"
-              style={{
-                fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-                gap: isCol ? '0' : '9px',
-                padding: isCol ? '7px 0' : '6px 9px',
-                justifyContent: isCol ? 'center' : 'flex-start',
-                color: 'rgba(148,163,184,0.7)', textDecoration: 'none', whiteSpace: 'nowrap',
-                border: '1px solid transparent',
-                transition: 'all 0.15s ease',
-              }}
+              style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const, gap: isCol ? '0' : '9px', padding: isCol ? '7px 0' : '6px 9px', justifyContent: isCol ? 'center' : 'flex-start', color: 'rgba(148,163,184,0.7)', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid transparent', transition: 'all 0.15s ease' }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = '#cbd5e1'; el.style.background = 'rgba(255,255,255,0.05)'; el.style.border = '1px solid rgba(255,255,255,0.08)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = 'rgba(148,163,184,0.7)'; el.style.background = 'transparent'; el.style.border = '1px solid transparent'; }}
             >
-              <span
-                className="flex items-center justify-center rounded-lg flex-shrink-0"
-                style={{ width: '24px', height: '24px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-              >
-                <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+              <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: '24px', height: '24px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <svg style={{ width: '14px', height: '14px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
               </span>
               {!isCol && 'Portal ArchiTechIA'}
             </a>
           </div>
         </nav>
 
-        {/* Footer con logout */}
         <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
           {!isCol ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg style={{ width: 13, height: 13, color: '#f59e0b' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <svg style={{ width: 13, height: 13, color: '#f59e0b' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', margin: 0 }}>{currentUser?.username ?? '...'}</p>
                   <p style={{ fontSize: 9, color: 'rgba(100,116,139,0.5)', margin: 0 }}>{currentUser?.rol === 'admin' ? 'Administrador' : 'Socio'}</p>
                 </div>
               </div>
-              <button
-                title="Cerrar sesión"
-                onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
-                style={{ padding: '5px 7px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-              >
-                <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
+              <button title="Cerrar sesión" onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
+                style={{ padding: '5px 7px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <svg style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>
             </div>
           ) : (
-            <button
-              title="Cerrar sesión"
-              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
-              style={{ width: '100%', padding: '6px 0', borderRadius: 8, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.12)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+            <button title="Cerrar sesión" onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}
+              style={{ width: '100%', padding: '6px 0', borderRadius: 8, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.12)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           )}
         </div>
@@ -350,92 +213,99 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
     <div className="flex h-screen" style={{ background: 'transparent', fontFamily: FONT }}>
       {/* Desktop sidebar */}
       {!isMobile && (
-        <aside
-          style={{
-            width: collapsed ? '60px' : '210px',
-            minWidth: collapsed ? '60px' : '210px',
-            background: GLASS_BG,
-            backdropFilter: GLASS_BLUR,
-            WebkitBackdropFilter: GLASS_BLUR,
-            borderRight: GLASS_BORDER,
-            boxShadow: GLASS_SHADOW,
-            transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1)',
-            overflow: 'hidden',
-            zIndex: 30,
-          }}
-          className="flex flex-col flex-shrink-0"
-        >
+        <aside style={{ width: collapsed ? '60px' : '210px', minWidth: collapsed ? '60px' : '210px', background: GLASS_BG, backdropFilter: GLASS_BLUR, WebkitBackdropFilter: GLASS_BLUR, borderRight: GLASS_BORDER, boxShadow: GLASS_SHADOW, transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', zIndex: 30 }} className="flex flex-col flex-shrink-0">
           <SidebarContent />
         </aside>
       )}
 
-      {/* Mobile overlay */}
       {isMobile && mobileOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }} onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Mobile sidebar */}
       {isMobile && (
-        <aside
-          className="fixed top-0 left-0 h-full z-50 flex flex-col"
-          style={{
-            width: '260px',
-            background: GLASS_BG,
-            backdropFilter: GLASS_BLUR,
-            WebkitBackdropFilter: GLASS_BLUR,
-            borderRight: GLASS_BORDER,
-            boxShadow: GLASS_SHADOW,
-            transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
-          }}
-        >
+        <aside className="fixed top-0 left-0 h-full z-50 flex flex-col" style={{ width: '260px', background: GLASS_BG, backdropFilter: GLASS_BLUR, WebkitBackdropFilter: GLASS_BLUR, borderRight: GLASS_BORDER, boxShadow: GLASS_SHADOW, transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)' }}>
           <SidebarContent forceExpanded />
         </aside>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ zIndex: 1 }}>
-        {/* Mobile top bar */}
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ zIndex: 1, position: 'relative' }}>
+        {/* Mobile header */}
         {isMobile && (
-          <header
-            className="flex items-center gap-3 px-4 py-3 sticky top-0 z-20"
-            style={{
-              background: 'rgba(0,0,0,0.65)',
-              backdropFilter: 'blur(20px) saturate(180%)',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
-              boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
-              fontFamily: FONT,
-            }}
-          >
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="flex items-center justify-center rounded-lg"
-              style={{ minWidth: '40px', minHeight: '40px', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              aria-label="Abrir menu"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+          <header className="flex items-center gap-3 px-4 py-3 sticky top-0 z-20" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 1px 0 rgba(255,255,255,0.04)', fontFamily: FONT }}>
+            <button onClick={() => setMobileOpen(true)} className="flex items-center justify-center rounded-lg" style={{ minWidth: '40px', minHeight: '40px', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} aria-label="Abrir menu">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <div
-              className="flex items-center justify-center rounded-lg"
-              style={{ width: '28px', height: '28px', background: BRAND_DIM, border: '1px solid ' + BRAND_BORDER }}
-            >
+            <div className="flex items-center justify-center rounded-lg" style={{ width: '28px', height: '28px', background: BRAND_DIM, border: '1px solid ' + BRAND_BORDER }}>
               <Image src="/sml26-logo.png" alt="Smartlex" width={20} height={20} style={{ objectFit: 'contain' }} />
             </div>
             <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BRAND_L }}>Smartlex</span>
             <span style={{ fontSize: '11px', fontWeight: 500, color: 'rgba(148,163,184,0.6)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>DocAI</span>
+            {modInfo && (
+              <button onClick={() => setInfoOpen(true)} title={'Sobre ' + modInfo.label} style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: 8, background: modInfo.color + '18', border: '1px solid ' + modInfo.color + '40', color: modInfo.color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </button>
+            )}
           </header>
         )}
 
         <main className="flex-1 overflow-y-auto p-6" style={{ background: 'transparent' }}>
           {children}
         </main>
+
+        {/* Desktop floating ⓘ button */}
+        {!isMobile && modInfo && (
+          <button
+            onClick={() => setInfoOpen(true)}
+            title={'Sobre ' + modInfo.label}
+            style={{ position: 'absolute', bottom: 24, right: 24, width: 40, height: 40, borderRadius: '50%', background: modInfo.color + '18', border: '1.5px solid ' + modInfo.color + '50', color: modInfo.color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px ' + modInfo.color + '30', transition: 'all .2s', zIndex: 20 }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = modInfo.color + '30'; el.style.transform = 'scale(1.1)'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = modInfo.color + '18'; el.style.transform = 'scale(1)'; }}
+          >
+            <svg style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        )}
       </div>
+
+      {/* Info modal */}
+      {infoOpen && modInfo && (
+        <div onClick={() => setInfoOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'rgba(10,16,30,0.97)', border: '1px solid ' + modInfo.color + '35', borderRadius: 16, padding: '28px 28px 24px', maxWidth: 420, width: '100%', boxShadow: '0 0 48px ' + modInfo.color + '20, 0 24px 64px rgba(0,0,0,0.5)', fontFamily: FONT }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: modInfo.color + '1a', border: '1px solid ' + modInfo.color + '35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4em', flexShrink: 0 }}>
+                {modInfo.emoji}
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.05em', color: '#f1f5f9' }}>{modInfo.label}</div>
+                <div style={{ fontSize: '.78em', color: modInfo.color, marginTop: 1 }}>{modInfo.descripcion}</div>
+              </div>
+              <button onClick={() => setInfoOpen(false)} style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none' }}>
+              {modInfo.detalle.map((d, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0', borderBottom: i < modInfo.detalle.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: modInfo.color, flexShrink: 0, marginTop: 6 }} />
+                  <span style={{ fontSize: '.83em', color: '#94a3b8', lineHeight: 1.5 }}>{d}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setInfoOpen(false)} style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', cursor: 'pointer', fontSize: '.83em', fontWeight: 500 }}>
+                Cerrar
+              </button>
+              <Link href="/ayuda" onClick={() => setInfoOpen(false)} style={{ flex: 1, padding: '9px', borderRadius: 8, background: modInfo.color + '18', border: '1px solid ' + modInfo.color + '35', color: modInfo.color, cursor: 'pointer', fontSize: '.83em', fontWeight: 600, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Ver todos los módulos →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

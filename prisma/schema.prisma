@@ -165,3 +165,17 @@ model SesionLogin {
   userAgent String?
   createdAt DateTime @default(now())
 }
+
+// ── GRAFO DE CONEXIONES SEMÁNTICAS ───────────────────────────────────────
+model GrafoEdge {
+  id        String   @id @default(cuid())
+  sourceId  String
+  targetId  String
+  score     Float
+  tipo      String   @default("semantico")
+  createdAt DateTime @default(now())
+
+  @@unique([sourceId, targetId])
+  @@index([sourceId])
+  @@index([targetId])
+}

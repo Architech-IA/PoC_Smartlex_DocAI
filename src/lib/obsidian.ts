@@ -2,6 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const VAULT_PATH = process.env.OBSIDIAN_VAULT_PATH ?? '';
+const APP_URL = process.env.APP_URL ?? 'https://smartlex.architechia.co';
 
 interface DocumentoObsidian {
   id: string;
@@ -39,7 +40,7 @@ export async function escribirNota(doc: DocumentoObsidian): Promise<void> {
     .join('\n');
 
   const wikilink = doc.proyectoNombre ? `\n- [[Proyecto - ${doc.proyectoNombre}]]` : '';
-  const appUrl = `http://localhost:3000/documentos/${doc.id}`;
+  const appUrl = APP_URL + '/documentos/' + doc.id;
 
   const contenido = `---
 tipo: ${doc.tipo.toLowerCase()}
