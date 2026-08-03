@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-type NavItem = { href: string; label: string; icon: string };
+type NavItem = { href: string; label: string; icon: string; adminOnly?: boolean };
 
 const NAV_LINKS: NavItem[] = [
   { href: '/',                  label: 'Dashboard',   icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -16,6 +16,7 @@ const NAV_LINKS: NavItem[] = [
   { href: '/auditoria',         label: 'Auditoría',   icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
   { href: '/explorador',        label: 'Explorador',  icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
   { href: '/clientes',          label: 'Clientes',    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+  { href: '/sesiones',          label: 'Sesiones',    icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', adminOnly: true },
 ];
 
 const MODULE_COLORS: Record<string, { icon: string; bg: string; border: string; glow: string }> = {
@@ -27,6 +28,7 @@ const MODULE_COLORS: Record<string, { icon: string; bg: string; border: string; 
   '/auditoria':         { icon: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: 'rgba(192,132,252,0.3)',  glow: '0 0 14px rgba(192,132,252,0.35)' },
   '/explorador':        { icon: '#34d399', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)',  glow: '0 0 14px rgba(16,185,129,0.35)'  },
   '/clientes':          { icon: '#60a5fa', bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.25)',  glow: '0 0 14px rgba(96,165,250,0.35)'  },
+  '/sesiones':          { icon: '#f472b6', bg: 'rgba(244,114,182,0.12)', border: 'rgba(244,114,182,0.25)', glow: '0 0 14px rgba(244,114,182,0.35)' },
 };
 const DEFAULT_MC = { icon: '#64748b', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.07)', glow: '' };
 
@@ -49,10 +51,15 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ username: string; rol: string } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('sml-sidebar-collapsed');
     if (saved === 'true') setCollapsed(true);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => { if (data) setCurrentUser(data); });
   }, []);
 
   useEffect(() => {
@@ -257,7 +264,7 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
           )}
 
           <div className="space-y-0.5">
-            {NAV_LINKS.map(item => <NavLink key={item.href} item={item} isCol={isCol} />)}
+            {NAV_LINKS.filter(item => !item.adminOnly || currentUser?.rol === 'admin').map(item => <NavLink key={item.href} item={item} isCol={isCol} />)}
           </div>
 
           {/* Portal link */}
@@ -309,8 +316,8 @@ export default function GestorLayout({ children }: { children: React.ReactNode; 
                   </svg>
                 </div>
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', margin: 0 }}>adminAT</p>
-                  <p style={{ fontSize: 9, color: 'rgba(100,116,139,0.5)', margin: 0 }}>Administrador</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', margin: 0 }}>{currentUser?.username ?? '...'}</p>
+                  <p style={{ fontSize: 9, color: 'rgba(100,116,139,0.5)', margin: 0 }}>{currentUser?.rol === 'admin' ? 'Administrador' : 'Socio'}</p>
                 </div>
               </div>
               <button
